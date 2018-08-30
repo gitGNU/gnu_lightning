@@ -20,11 +20,13 @@
 #if PROTO
 
 /* FIXME should actually be hw model/version/etc or other constraint
- * that causes a SIGSEGV if using these instructions */
-#if defined(__hpux)
+ * that causes a SIGSEGV/SIGILL if using these instructions */
+#if 1 //defined(__hpux)
 #  define FSTXR				0
+#  define FLDXR				0
 #else
 #  define FSTXR				1
+#  define FLDXR				1
 #endif
 
 #define f39(o,b,x,t)			_f39(_jit,o,b,x,t)
@@ -391,13 +393,20 @@ static void _cmpi_d(jit_state_t*,jit_word_t,
 #define ldr_f(r0,r1)			FLDWI(0,r1,r0)
 #define ldi_f(r0,i0)			_ldi_f(_jit,r0,i0)
 static void _ldi_f(jit_state_t*,jit_int32_t,jit_word_t);
-#define ldxr_f(r0,r1,r2)		FLDW(r2,r1,r0)
+#if FLDXR
+#  define ldxr_f(r0,r1,r2)		FLDW(r2,r1,r0)
+#  define ldxr_d(r0,r1,r2)		FLDD(r2,r1,r0)
+#else
+#define ldxr_f(r0,r1,r2)		_ldxr_f(_jit,r0,r1,r2)
+static void _ldxr_f(jit_state_t*,jit_int32_t,jit_int32_t,jit_int32_t);
+#define ldxr_d(r0,r1,r2)		_ldxr_d(_jit,r0,r1,r2)
+static void _ldxr_d(jit_state_t*,jit_int32_t,jit_int32_t,jit_int32_t);
+#endif
 #define ldxi_f(r0,r1,i0)		_ldxi_f(_jit,r0,r1,i0)
 static void _ldxi_f(jit_state_t*,jit_int32_t,jit_int32_t,jit_word_t);
 #define ldr_d(r0,r1)			FLDDI(0,r1,r0)
 #define ldi_d(r0,i0)			_ldi_d(_jit,r0,i0)
 static void _ldi_d(jit_state_t*,jit_int32_t,jit_word_t);
-#define ldxr_d(r0,r1,r2)		FLDD(r2,r1,r0)
 #define ldxi_d(r0,r1,i0)		_ldxi_d(_jit,r0,r1,i0)
 static void _ldxi_d(jit_state_t*,jit_int32_t,jit_int32_t,jit_word_t);
 #define str_f(r0,r1)			FSTWI(r1,0,r0)
@@ -812,6 +821,28 @@ _ldi_f(jit_state_t *_jit, jit_int32_t r0, jit_word_t i0)
     }
 }
 
+#if !FLDXR
+static void
+_ldxr_f(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_int32_t r2)
+{
+    jit_int32_t		reg;
+    reg = jit_get_reg(jit_class_gpr);
+    addr(rn(reg), r1, r2);
+    ldr_f(r0, rn(reg));
+    jit_unget_reg(reg);
+}
+
+static void
+_ldxr_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_int32_t r2)
+{
+    jit_int32_t		reg;
+    reg = jit_get_reg(jit_class_gpr);
+    addr(rn(reg), r1, r2);
+    ldr_d(r0, rn(reg));
+    jit_unget_reg(reg);
+}
+#endif
+
 static void
 _ldxi_f(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 {
@@ -819,7 +850,7 @@ _ldxi_f(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
     if (i0 >= -16 && i0 <= 15)
 	FLDWI(i0, r1, r0);
     /* |im11a|0|t|i| */
-    else if (i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 6))
+    else if (FLDXR && i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 6))
 	FLDWL(i0, r1, r0);
     else {
 	reg = jit_get_reg(jit_class_gpr);
@@ -851,7 +882,7 @@ _ldxi_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
     if (i0 >= -16 && i0 <= 15)
 	FLDDI(i0, r1, r0);
     /* |im10a|m|a|1|i| */
-    else if (i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 14))
+    else if (FLDXR && i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 14))
 	FLDDL(i0, r1, r0);
     else {
 	reg = jit_get_reg(jit_class_gpr);
@@ -905,7 +936,7 @@ _stxi_f(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
     if (i0 >= -16 && i0 <= 15)
 	FSTWI(r1, i0, r0);
     /* |im11a|0|t|i| */
-    else if (i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 6))
+    else if (FSTXR && i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 6))
 	FSTWL(r1, i0, r0);
     else {
 	reg = jit_get_reg(jit_class_gpr);
@@ -942,7 +973,7 @@ _stxi_d(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
     if (i0 >= -16 && i0 <= 15)
 	FSTDI(r1, i0, r0);
     /* |im10a|m|a|1|i| */
-    else if (i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 14))
+    else if (FSTXR && i0 >= -8192 && i0 <= 8191 && !(re_assemble_16(i0) & 14))
 	FSTDL(r1, i0, r0);
     else {
 	reg = jit_get_reg(jit_class_gpr);

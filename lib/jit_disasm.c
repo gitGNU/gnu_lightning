@@ -120,6 +120,10 @@ jit_init_debug(const char *progname)
     disasm_info.arch = bfd_arch_alpha;
     disasm_info.mach = bfd_mach_alpha_ev6;
 #  endif
+#  if defined(__hppa__)
+    disasm_info.arch = bfd_arch_hppa;
+    disasm_info.mach = bfd_mach_hppa10;
+#  endif
     disasm_info.print_address_func = disasm_print_address;
 
 # if BINUTILS_2_29

@@ -1,3 +1,15 @@
+2018-08-30 Paulo Andrade <pcpa@gnu.org>
+
+	* lib/jit_disasm.c: Add hints to select hppa disassembler.
+
+	* lib/jit_hppa-cpu.c: Correct address of vastart when all
+	argument registers were used as non vararg arguments.
+
+	* lib/jit_hppa-fpu.c: Disable load/store of rv,ix,rb where
+	rv is the value, ix is an register or integer offset and rb
+	is a base register. These should be better tested, as they do
+	not work on all environments (fail on qemu-hppa).
+
 2018-04-20 Paulo Andrade <pcpa@gnu.org>
 
 	* include/lightning/jit_private.h: Add new register classes to
