@@ -217,6 +217,8 @@ jit_finish_debug(void)
 	jit_free((jit_pointer_t *)&disasm_synthetic);
     if (disasm_symbols)
 	jit_free((jit_pointer_t *)&disasm_symbols);
+    if (disasm_bfd)
+	bfd_close (disasm_bfd);
 #endif
 }
 

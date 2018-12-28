@@ -1,3 +1,8 @@
+2018-12-28 Paulo Andrade <pcpa@gnu.org>
+
+	* lib/jit_disasm.c: Release bfd handle. Thanks for patch to
+	Marc Nieper-Wißkirchen.
+
 2018-08-30 Paulo Andrade <pcpa@gnu.org>
 
 	* lib/jit_disasm.c: Add hints to select hppa disassembler.
