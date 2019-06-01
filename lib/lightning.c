@@ -312,7 +312,12 @@ _jit_unget_reg(jit_state_t *_jit, jit_int32_t regno)
 	    jit_load(regno);
 	jit_regset_clrbit(&_jitc->regsav, regno);
     }
+#if defined(jit_carry)
+    assert((regno == jit_carry /*&& _NOREG != jit_carry*/) ||
+	   jit_regset_tstbit(&_jitc->regarg, regno) != 0);
+#else
     assert(jit_regset_tstbit(&_jitc->regarg, regno) != 0);
+#endif
     jit_regset_clrbit(&_jitc->regarg, regno);
 }
 

@@ -1,5 +1,11 @@
 2019-06-01 Paulo Andrade <pcpa@gnu.org>
 
+	* lib/lightning.c: Correct assertion on jit_unget_reg when the
+	argument is jit_carry, and jit_carry was not used in the
+	instruction.
+
+2019-06-01 Paulo Andrade <pcpa@gnu.org>
+
 	* include/lightning/jit_private.h: Remove no longer need
 	setmask field of jit_block_t and blockmask from jit_compiler_t.
 
