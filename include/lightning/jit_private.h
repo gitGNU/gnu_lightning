@@ -397,7 +397,6 @@ struct jit_block {
     jit_node_t		*label;
     jit_regset_t	 reglive;
     jit_regset_t	 regmask;
-    jit_regset_t	 setmask;	/* Used for forward second pass */
 };
 
 struct jit_value {
@@ -498,10 +497,6 @@ struct jit_compiler {
     jit_regset_t	  regsav;	/* automatic spill only once */
     jit_regset_t	  reglive;	/* known live registers at some point */
     jit_regset_t	  regmask;	/* register mask to update reglive */
-    struct {
-	jit_word_t	 *ptr;
-	jit_word_t	  length;
-    } blockmask;			/* mask of visited basic blocks */
     struct {
 	jit_uint8_t	 *end;
     } code;

@@ -1,3 +1,16 @@
+2019-06-01 Paulo Andrade <pcpa@gnu.org>
+
+	* include/lightning/jit_private.h: Remove no longer need
+	setmask field of jit_block_t and blockmask from jit_compiler_t.
+
+	* lib/lightning.c: Rework of register live and unknown state
+	information during jit generation. It no longer recurses nor
+	do dangerous bit unset of registers in unknown state. The
+	only pitfall known, that must be taken care now is that jmpr
+	(or jmpi to not a jit node) is treated as a function call, as
+	otherwise it would need to consider all registers live, and
+	spill/reload during all jit generation.
+
 2018-12-28 Paulo Andrade <pcpa@gnu.org>
 
 	* lib/jit_disasm.c: Release bfd handle. Thanks for patch to
