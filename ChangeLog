@@ -1,3 +1,9 @@
+2019-06-04 Paulo Andrade <pcpa@gnu.org>
+
+	* lib/jit_alpha.c lib/jit_ia64.c lib/jit_mips.c lib/jit_sparc.c:
+	Correct assertion of _jitc->regarg after emiting an instruction.
+	jit_carry may be set, but not an argument to the current instruction.
+
 2019-06-01 Paulo Andrade <pcpa@gnu.org>
 
 	* lib/lightning.c: Correct assertion on jit_unget_reg when the

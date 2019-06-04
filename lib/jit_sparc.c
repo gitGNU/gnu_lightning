@@ -1830,9 +1830,7 @@ _emit_code(jit_state_t *_jit)
 #  endif
 	jit_regarg_clr(node, value);
 #  if __WORDSIZE == 64
-	if (jit_carry == _NOREG)
-	    assert(jit_regset_cmp_ui(&_jitc->regarg, 0) == 0);
-	else {
+	if (jit_regset_cmp_ui(&_jitc->regarg, 0) != 0) {
 	    assert(jit_regset_scan1(&_jitc->regarg, 0) == jit_carry);
 	    assert(jit_regset_scan1(&_jitc->regarg, jit_carry + 1) == ULONG_MAX);
 	}
