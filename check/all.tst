@@ -280,6 +280,8 @@ label:
 	sti_f 0x80000000 %f0
 	stxr_f %r1 %r0 %f0
 	stxi_f 4 %r0 %f0
+/* FIXME the bordr_d at the end will cause an assertion on riscv due to
+ * too distant jump (does not fit in a 12 bit signed int) */
 ord:
 	bltr_f ord %f0 %f1
 ordi:

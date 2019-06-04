@@ -3455,4 +3455,6 @@ _patch_register(jit_state_t *_jit, jit_node_t *node, jit_node_t *link,
 #  include "jit_s390.c"
 #elif defined(__alpha__)
 #  include "jit_alpha.c"
+#elif defined(__riscv)
+#  include "jit_riscv.c"
 #endif

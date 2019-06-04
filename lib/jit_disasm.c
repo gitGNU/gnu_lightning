@@ -124,6 +124,14 @@ jit_init_debug(const char *progname)
     disasm_info.arch = bfd_arch_hppa;
     disasm_info.mach = bfd_mach_hppa10;
 #  endif
+#  if defined(__riscv)
+    disasm_info.arch = bfd_arch_riscv;
+#  if __WORDSIZE == 32
+    disasm_info.mach = bfd_mach_riscv32;
+#  else
+    disasm_info.mach = bfd_mach_riscv64;
+#  endif
+#  endif
     disasm_info.print_address_func = disasm_print_address;
 
 # if BINUTILS_2_29

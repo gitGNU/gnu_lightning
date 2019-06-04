@@ -161,6 +161,7 @@ case "$target_cpu" in
     aarch64)		cpu=aarch64	;;
     s390*)		cpu=s390	;;
     alpha*)		cpu=alpha	;;
+    riscv*)		cpu=riscv	;;
     *)					;;
 esac
 AM_CONDITIONAL(cpu_arm,     [test cpu-$cpu = cpu-arm])
@@ -173,6 +174,7 @@ AM_CONDITIONAL(cpu_hppa,    [test cpu-$cpu = cpu-hppa])
 AM_CONDITIONAL(cpu_aarch64, [test cpu-$cpu = cpu-aarch64])
 AM_CONDITIONAL(cpu_s390,    [test cpu-$cpu = cpu-s390])
 AM_CONDITIONAL(cpu_alpha,   [test cpu-$cpu = cpu-alpha])
+AM_CONDITIONAL(cpu_riscv,   [test cpu-$cpu = cpu-riscv])
 
 # Test x87 if both, x87 and sse2 available
 ac_cv_test_x86_x87=

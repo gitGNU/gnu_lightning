@@ -152,6 +152,8 @@ typedef jit_int32_t		jit_fpr_t;
 #  include <lightning/jit_s390.h>
 #elif defined(__alpha__)
 #  include <lightning/jit_alpha.h>
+#elif defined(__riscv)
+#  include <lightning/jit_riscv.h>
 #endif
 
 #define jit_flag_node		0x0001	/* patch node not absolute */

@@ -59,3 +59,7 @@ if cpu_alpha
 lightning_include_HEADERS = 	\
 	jit_alpha.h
 endif
+if cpu_riscv
+lightning_include_HEADERS = 	\
+	jit_riscv.h
+endif

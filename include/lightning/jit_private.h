@@ -135,6 +135,13 @@ typedef jit_uint32_t		jit_regset_t;
 #  define JIT_RET		_V0
 #  define JIT_FRET		_F0
 typedef jit_uint64_t		jit_regset_t;
+#elif defined(__riscv)
+#  define JIT_RA0		_A0
+#  define JIT_FA0		_FA0
+#  define JIT_SP		_SP
+#  define JIT_RET		_A0
+#  define JIT_FRET		_FA0
+typedef jit_uint64_t		jit_regset_t;
 #endif
 
 #define jit_data(u,v,w)		_jit_data(_jit,u,v,w)
@@ -474,7 +481,8 @@ struct jit_compiler {
     jit_int32_t		  rout;		/* first output register */
     jit_int32_t		  breg;		/* base register for prolog/epilog */
 #endif
-#if __mips__ || __ia64__ || __alpha__ || (__sparc__ && __WORDSIZE == 64)
+#if __mips__ || __ia64__ || __alpha__ || \
+	(__sparc__ && __WORDSIZE == 64) || __riscv
     jit_int32_t		  carry;
 #define jit_carry	  _jitc->carry
 #endif

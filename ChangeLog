@@ -1,5 +1,17 @@
 2019-06-04 Paulo Andrade <pcpa@gnu.org>
 
+	* include/lightning/jit_riscv.h, lib/jit_riscv-cpu.c,
+	lib/jit_riscv-fpu.c, lib/jit_riscv-sz.c, lib/jit_riscv.c:
+	Implement riscv port. Only 64 bit Linux supported. Built on
+	Fedora 28 image.
+
+	* check/all.tst, check/float.tst, configure.ac, include/lightning.h,
+	include/lightning/Makefile.am, include/lightning/jit_private.h,
+	lib/Makefile.am, lib/jit_disasm.c, lib/jit_size.c, lib/lightning.c:
+	Minor updates for the new riscv port.
+
+2019-06-04 Paulo Andrade <pcpa@gnu.org>
+
 	* lib/jit_alpha.c lib/jit_ia64.c lib/jit_mips.c lib/jit_sparc.c:
 	Correct assertion of _jitc->regarg after emiting an instruction.
 	jit_carry may be set, but not an argument to the current instruction.
