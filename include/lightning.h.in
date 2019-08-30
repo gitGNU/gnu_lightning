@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2017, 2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -20,15 +20,9 @@
 #ifndef _lightning_h
 #define _lightning_h
 
-#if HAVE_CONFIG_H
-# include "config.h"
-#endif
-
 #include <unistd.h>
 #include <stdlib.h>
-#if HAVE_STDINT_H
-#  include <stdint.h>
-#endif
+@MAYBE_INCLUDE_STDINT_H@
 #include <string.h>
 
 #if defined(__hpux) && defined(__hppa__)
@@ -36,14 +30,6 @@
 #endif
 #if defined(__alpha__) && defined(__osf__)
 #  include <machine/endian.h>
-#endif
-
-#ifdef STDC_HEADERS
-#  include <stddef.h>
-#else
-#  if !defined(offsetof)
-#    define offsetof(type, field) ((char *)&((type *)0)->field - (char *)0)
-#  endif
 #endif
 
 #ifndef __WORDSIZE

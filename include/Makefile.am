@@ -17,3 +17,5 @@
 include_HEADERS = lightning.h
 SUBDIRS =		\
 	lightning
+
+nodist_include_HEADERS = lightning.h

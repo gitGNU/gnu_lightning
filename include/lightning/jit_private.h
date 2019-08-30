@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2017, 2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -27,6 +27,14 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
+
+#ifdef STDC_HEADERS
+#  include <stddef.h>
+#else
+#  if !defined(offsetof)
+#    define offsetof(type, field) ((char *)&((type *)0)->field - (char *)0)
+#  endif
+#endif
 
 #if defined(__GNUC__)
 #  define maybe_unused		__attribute__ ((unused))

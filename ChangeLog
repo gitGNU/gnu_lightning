@@ -6,6 +6,15 @@
 	https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=925129
 	* THANKS: update.
 
+2019-08-29 Marc Nieper-Wißkirchen <marc@nieper-wisskirchen.de>
+
+	* include/lightning/jit_private.h: Move definition of offsetof
+	from the public header file here.
+
+	* configure.ac, include/Makefile.am, include/lightning.h,
+	include/lightning.h.in: Generate lightning.h from lightning.in.h
+	and remove the dependence on config.h from the public header file.
+
 2019-06-04 Paulo Andrade <pcpa@gnu.org>
 
 	* include/lightning/jit_riscv.h, lib/jit_riscv-cpu.c,

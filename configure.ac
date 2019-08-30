@@ -285,10 +285,15 @@ AC_SUBST(cpu)
 
 AC_SUBST([LIGHTNING_CFLAGS])
 
+if test $ac_cv_header_stdint_h = yes; then
+    AC_SUBST(MAYBE_INCLUDE_STDINT_H, ["#include <stdint.h>"])
+fi
+
 AC_OUTPUT([Makefile
 	   lightning.pc
 	   doc/Makefile
 	   include/Makefile
 	   include/lightning/Makefile
+	   include/lightning.h
 	   lib/Makefile
 	   check/Makefile])
