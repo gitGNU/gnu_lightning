@@ -1,3 +1,11 @@
+2019-08-30 Paulo Andrade <pcpa@gnu.org>
+
+	* lib/jit_mips-cpu.c: Use JALR to get the same effect as JR, as
+	in mips32r6 JR generates an illegal instruction. Thanks to
+	Bruno Haible for providing a patch and the information, reported at
+	https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=925129
+	* THANKS: update.
+
 2019-06-04 Paulo Andrade <pcpa@gnu.org>
 
 	* include/lightning/jit_riscv.h, lib/jit_riscv-cpu.c,

@@ -379,7 +379,11 @@ static void _nop(jit_state_t*,jit_int32_t);
 #  define BGTZ(rs,im)			hrri(MIPS_BGTZ,rs,_ZERO_REGNO,im)
 #  define BNE(rs,rt,im)			hrri(MIPS_BNE,rs,rt,im)
 #  define JALR(r0)			hrrrit(MIPS_SPECIAL,r0,0,_RA_REGNO,0,MIPS_JALR)
-#  define JR(r0)			hrrrit(MIPS_SPECIAL,r0,0,0,0,MIPS_JR)
+#  if 1 /* supports MIPS32 R6 */
+#   define JR(r0)			hrrrit(MIPS_SPECIAL,r0,0,0,0,MIPS_JALR)
+#  else /* does not support MIPS32 R6 */
+#   define JR(r0)			hrrrit(MIPS_SPECIAL,r0,0,0,0,MIPS_JR)
+#  endif
 #  define J(i0)				hi(MIPS_J,i0)
 #  define MOVZ(rd,rs,rt)		hrrrit(0,rs,rt,rd,0,MIPS_MOVZ)
 #  define comr(r0,r1)			xori(r0,r1,-1)
