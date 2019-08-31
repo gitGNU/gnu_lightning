@@ -267,6 +267,7 @@ static void call_forward(void *value, label_t *label);
 static void make_arg(void *value);
 static jit_pointer_t get_arg(void);
 static long get_imm(void);
+static void live(void);
 static void align(void);	static void name(void);
 static void prolog(void);
 static void frame(void);	static void tramp(void);
@@ -580,6 +581,7 @@ static size_t		  data_offset, data_length;
 static instr_t		  instr_vector[] = {
 #define entry(value)	{ NULL, #value, value }
 #define entry2(name, function)	{ NULL, name, function }
+    entry(live),
     entry(align),	entry(name),
     entry(prolog),
     entry(frame),	entry(tramp),
@@ -1365,6 +1367,12 @@ name(void) {
     int		 ch = skipws();
     (void)identifier(ch);
     jit_name(parser.string);
+}
+static void
+live(void) {
+    if (primary(skip_ws) != tok_register)
+	error("bad register");
+    jit_live(parser.regval);
 }
 entry_im(align)
 entry(prolog)
