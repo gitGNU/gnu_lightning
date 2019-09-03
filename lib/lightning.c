@@ -1539,12 +1539,21 @@ _jit_patch_abs(jit_state_t *_jit, jit_node_t *instr, jit_pointer_t address)
 {
     jit_int32_t		mask;
 
-    if (instr->code == jit_code_movi)
-	instr->v.p = address;
-    else {
-	mask = jit_classify(instr->code);
-	assert((mask & (jit_cc_a0_reg|jit_cc_a0_jmp)) == jit_cc_a0_jmp);
-	instr->u.p = address;
+    switch (instr->code) {
+	case jit_code_movi:	case jit_code_ldi_c:	case jit_code_ldi_uc:
+	case jit_code_ldi_s:	case jit_code_ldi_us:	case jit_code_ldi_i:
+	case jit_code_ldi_ui:	case jit_code_ldi_l:	case jit_code_ldi_f:
+	case jit_code_ldi_d:
+	    instr->v.p = address;
+	    break;
+	case jit_code_sti_c:	case jit_code_sti_s:	case jit_code_sti_i:
+	case jit_code_sti_l:	case jit_code_sti_f:	case jit_code_sti_d:
+	    instr->u.p = address;
+	    break;
+	default:
+	    mask = jit_classify(instr->code);
+	    assert((mask & (jit_cc_a0_reg|jit_cc_a0_jmp)) == jit_cc_a0_jmp);
+	    instr->u.p = address;
     }
 }
 
