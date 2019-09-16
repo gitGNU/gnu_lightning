@@ -100,11 +100,10 @@ main(int argc, char *argv[])
 #  endif
 #elif defined(__powerpc__)
     fprintf(fp, "#endif /* "
-#  if _CALL_AIX
-	    "_CALL_AIX"
-#  elif _CALL_SYSV
-	    "_CALL_SYSV"
+#  if !_CALL_SYSV
+	    "!"
 #  endif
+	    "_CALL_SYSV"
 	    " */\n");
     fprintf(fp, "#endif /* __BYTE_ORDER */\n");
     fprintf(fp, "#endif /* __powerpc__ */\n");
