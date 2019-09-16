@@ -1,3 +1,9 @@
+2019-09-16 Marc Nieper-Wi√kirchen <marc@nieper-wisskirchen.de>
+
+	* include/lightning/jit_x86.h, lib/jit_x86.c: Correct x86_64
+	backend, made %r12 a callee-save register as dictated by the
+	System V AMD64 ABI.
+
 2019-09-16 Paulo Andrade <pcpa@gnu.org>
 
 	* Makefile.am: Do not force CFLAGS for the get_jit_size target.
@@ -31,7 +37,7 @@
 	https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=925129
 	* THANKS: update.
 
-2019-08-29 Marc Nieper-Wi√ükirchen <marc@nieper-wisskirchen.de>
+2019-08-29 Marc Nieper-Wi√kirchen <marc@nieper-wisskirchen.de>
 
 	* include/lightning/jit_private.h: Move definition of offsetof
 	from the public header file here.
