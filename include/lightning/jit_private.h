@@ -92,7 +92,7 @@ typedef jit_uint64_t		jit_regset_t;
 #    define JIT_FRET		_R0
 #  endif
 typedef jit_uint64_t		jit_regset_t;
-#elif defined(__ppc__) || defined(__powerpc__)
+#elif defined(__powerpc__)
 #  define JIT_RA0		_R3
 #  define JIT_FA0		_F1
 #  define JIT_SP		_R1
@@ -583,7 +583,7 @@ struct jit_compiler {
 	jit_int32_t	  values[1024];	/* pending constants */
 	jit_word_t	  patches[2048];
     } consts;
-#elif __powerpc__ || __ia64__
+#elif (__powerpc__ && _CALL_AIXDESC) || __ia64__
     /* Keep track of prolog addresses, just for the sake of making
      * jit that starts with a jump to a "main" label work like other
      * backends. */

@@ -124,7 +124,7 @@ typedef jit_int32_t		jit_fpr_t;
 #  include <lightning/jit_mips.h>
 #elif defined(__arm__)
 #  include <lightning/jit_arm.h>
-#elif defined(__ppc__) || defined(__powerpc__)
+#elif defined(__powerpc__)
 #  include <lightning/jit_ppc.h>
 #elif defined(__sparc__)
 #  include <lightning/jit_sparc.h>
@@ -148,6 +148,7 @@ typedef jit_int32_t		jit_fpr_t;
 #define jit_flag_use		0x0008	/* do not remove marker label */
 #define jit_flag_synth		0x0010	/* synthesized instruction */
 #define jit_flag_head		0x1000	/* label reached by normal flow */
+#define jit_flag_varargs	0x2000	/* call{r,i} to varargs function */
 
 #define JIT_R(index)		jit_r(index)
 #define JIT_V(index)		jit_v(index)

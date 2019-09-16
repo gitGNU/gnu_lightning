@@ -23,42 +23,20 @@
 #define JIT_HASH_CONSTS		1
 #define JIT_NUM_OPERANDS	3
 
-#if __powerpc__
-#  if _CALL_ELF == 2
-/* __BYTE_ORDER == __LITTLE_ENDIAN */
-#    define ABI_ELFv2		1
-#  endif
-#endif
-
 /*
  * Types
  */
 typedef enum {
-#if __ppc__
-#  define jit_r(i)		(_R11 + (i))
-#else
-#  define jit_r(i)		(_R28 + (i))
-#endif
+#define jit_r(i)		(_R28 + (i))
 #define jit_r_num()		3
-#if __ppc__
-#  define jit_v(i)		(_R30 - (i))
-#  define jit_v_num()		17
-#else
-#  define jit_v(i)		(_R27 - (i))
-#  define jit_v_num()		14
-#endif
+#define jit_v(i)		(_R27 - (i))
+#define jit_v_num()		14
 #define jit_f(i)		(_F14 + (i))
 #define jit_f_num()		8
     _R0,
-#if __ppc__
-#  define JIT_R0		_R11
-#  define JIT_R1		_R12
-#  define JIT_R2		_R13
-#else
-#  define JIT_R0		_R28
-#  define JIT_R1		_R29
-#  define JIT_R2		_R30
-#endif
+#define JIT_R0			_R28
+#define JIT_R1			_R29
+#define JIT_R2			_R30
     _R11,	_R12,	_R13,	_R2,
 #define JIT_V0			jit_v(0)
 #define JIT_V1			jit_v(1)
@@ -74,11 +52,6 @@ typedef enum {
 #define JIT_V11			jit_v(11)
 #define JIT_V12			jit_v(12)
 #define JIT_V13			jit_v(13)
-#if __ppc__
-#  define JIT_V14		jit_v(14)
-#  define JIT_V15		jit_v(15)
-#  define JIT_V16		jit_v(16)
-#endif
     _R14,	_R15,	_R16,	_R17,	_R18,	_R19,	_R20,	_R21,
     _R22,	_R23,	_R24,	_R25,	_R26,	_R27,	_R28,	_R29,
     _R30,

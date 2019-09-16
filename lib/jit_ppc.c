@@ -18,7 +18,24 @@
  */
 
 #define jit_arg_reg_p(i)		((i) >= 0 && (i) < 8)
-#define jit_arg_f_reg_p(i)		((i) >= 0 && (i) < 13)
+#if !_CALL_SYSV
+#  define jit_arg_f_reg_p(i)		((i) >= 0 && (i) < 13)
+#else
+#  define jit_arg_f_reg_p(i)		((i) >= 0 && (i) < 8)
+#  if __WORDSIZE == 32
+#    define va_gp_shift			2
+#  else
+#    define va_gp_shift			3
+#  endif
+#  define va_gp_increment		sizeof(jit_word_t)
+#  define first_gp_argument		r3
+#  define first_gp_offset		offsetof(jit_va_list_t,		\
+						 first_gp_argument)
+#  define va_fp_increment		sizeof(jit_float64_t)
+#  define first_fp_argument		f1
+#  define first_fp_offset		offsetof(jit_va_list_t,		\
+						 first_fp_argument)
+#endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #  define C_DISP			0
 #  define S_DISP			0
@@ -34,7 +51,39 @@
 /*
  * Types
  */
+#if _CALL_SYSV
+typedef struct jit_va_list {
+    jit_uint8_t		ngpr;
+    jit_uint8_t		nfpr;
+    jit_uint16_t	_pad;
+#  if __WORDSIZE == 64
+    jit_uint32_t	_pad2;
+#  endif
+    jit_pointer_t	over;
+    jit_pointer_t	save;
+#  if __WORDSIZE == 32
+    jit_word_t		_pad2;
+#  endif
+    jit_word_t		r3;
+    jit_word_t		r4;
+    jit_word_t		r5;
+    jit_word_t		r6;
+    jit_word_t		r7;
+    jit_word_t		r8;
+    jit_word_t		r9;
+    jit_word_t		r10;
+    jit_float64_t	f1;
+    jit_float64_t	f2;
+    jit_float64_t	f3;
+    jit_float64_t	f4;
+    jit_float64_t	f5;
+    jit_float64_t	f6;
+    jit_float64_t	f7;
+    jit_float64_t	f8;
+} jit_va_list_t;
+#else
 typedef jit_pointer_t jit_va_list_t;
+#endif
 
 /*
  * Prototypes
@@ -54,18 +103,11 @@ extern void __clear_cache(void *, void *);
  * Initialization
  */
 jit_register_t		_rvs[] = {
-    { rc(gpr) | 0,			"r0" },
-#if __ppc__
-    { rc(gpr) | 11,			"r11" },
-    { rc(gpr) | 12,			"r12" },
-    { rc(gpr) | 13,			"r13" },
-    { rc(gpr) | 2,			"r2" },
-#else
+    { rc(sav) | 0,			"r0" },
     { rc(sav) | 11,			"r11" },	/* env */
     { rc(sav) | 12,			"r12" },	/* exception */
     { rc(sav) | 13,			"r13" },	/* thread */
     { rc(sav) | 2,			"r2" },		/* toc */
-#endif
     { rc(sav) | rc(gpr) | 14,		"r14" },
     { rc(sav) | rc(gpr) | 15,		"r15" },
     { rc(sav) | rc(gpr) | 16,		"r16" },
@@ -112,11 +154,19 @@ jit_register_t		_rvs[] = {
     { rc(sav) | rc(fpr) | 29,		"f29" },
     { rc(sav) | rc(fpr) | 30,		"f30" },
     { rc(sav) | rc(fpr) | 31,		"f31" },
+#if !_CALL_SYSV
     { rc(arg) | rc(fpr) | 13,		"f13" },
     { rc(arg) | rc(fpr) | 12,		"f12" },
     { rc(arg) | rc(fpr) | 11,		"f11" },
     { rc(arg) | rc(fpr) | 10,		"f10" },
     { rc(arg) | rc(fpr) | 9,		"f9" },
+#else
+    { rc(fpr) | 13,			"f13" },
+    { rc(fpr) | 12,			"f12" },
+    { rc(fpr) | 11,			"f11" },
+    { rc(fpr) | 10,			"f10" },
+    { rc(fpr) | 9,			"f9" },
+#endif
     { rc(arg) | rc(fpr) | 8,		"f8" },
     { rc(arg) | rc(fpr) | 7,		"f7" },
     { rc(arg) | rc(fpr) | 6,		"f6" },
@@ -333,7 +383,12 @@ _jit_ellipsis(jit_state_t *_jit)
 	jit_link_prolog();
 	assert(!(_jitc->function->self.call & jit_call_varargs));
 	_jitc->function->self.call |= jit_call_varargs;
-
+#if _CALL_SYSV
+	/* Allocate va_list like object in the stack.
+	 * If applicable, with enough space to save all argument
+	 * registers, and use fixed offsets for them. */
+	_jitc->function->vaoff = jit_allocai(sizeof(jit_va_list_t));
+#endif
 	_jitc->function->vagp = _jitc->function->self.argi;
 	_jitc->function->vafp = _jitc->function->self.argf;
     }
@@ -353,12 +408,18 @@ _jit_arg(jit_state_t *_jit)
 {
     jit_node_t		*node;
     jit_int32_t		 offset;
+    jit_bool_t		 incr = 1;
     assert(_jitc->function);
-    if (jit_arg_reg_p(_jitc->function->self.argi))
+    if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
+#if _CALL_SYSV
+	incr = 0;
+#endif
+    }
     else
 	offset = _jitc->function->self.size;
-    _jitc->function->self.size += sizeof(jit_word_t);
+    if (incr)
+	_jitc->function->self.size += sizeof(jit_word_t);
     node = jit_new_node_ww(jit_code_arg, offset,
 			   ++_jitc->function->self.argn);
     jit_link_prolog();
@@ -370,19 +431,27 @@ _jit_arg_f(jit_state_t *_jit)
 {
     jit_node_t		*node;
     jit_int32_t		 offset;
+    jit_bool_t		 incr = 1;
     assert(_jitc->function);
-    if (jit_arg_f_reg_p(_jitc->function->self.argf))
+    if (jit_arg_f_reg_p(_jitc->function->self.argf)) {
 	offset = _jitc->function->self.argf++;
-    else
-	offset = _jitc->function->self.size + F_DISP;
-    if (jit_arg_reg_p(_jitc->function->self.argi)) {
-#if __WORDSIZE == 32
-	_jitc->function->self.argi += 2;
-#else
-	_jitc->function->self.argi++;
+#if _CALL_SYSV
+	incr = 0;
 #endif
     }
-    _jitc->function->self.size += sizeof(jit_word_t);
+    else
+	offset = _jitc->function->self.size + F_DISP;
+#if !_CALL_SYSV
+    if (jit_arg_reg_p(_jitc->function->self.argi)) {
+#  if __WORDSIZE == 32
+	_jitc->function->self.argi += 2;
+#  else
+	_jitc->function->self.argi++;
+#  endif
+    }
+#endif
+    if (incr)
+	_jitc->function->self.size += sizeof(jit_word_t);
     node = jit_new_node_ww(jit_code_arg_f, offset,
 			   ++_jitc->function->self.argn);
     jit_link_prolog();
@@ -394,19 +463,32 @@ _jit_arg_d(jit_state_t *_jit)
 {
     jit_node_t		*node;
     jit_int32_t		 offset;
+    jit_bool_t		 incr = 1;
     assert(_jitc->function);
-    if (jit_arg_f_reg_p(_jitc->function->self.argf))
+    if (jit_arg_f_reg_p(_jitc->function->self.argf)) {
 	offset = _jitc->function->self.argf++;
-    else
-	offset = _jitc->function->self.size;
-    if (jit_arg_reg_p(_jitc->function->self.argi)) {
-#if __WORDSIZE == 32
-	_jitc->function->self.argi += 2;
-#else
-	_jitc->function->self.argi++;
+#if _CALL_SYSV
+	incr = 0;
 #endif
     }
-    _jitc->function->self.size += sizeof(jit_float64_t);
+    else {
+#if _CALL_SYSV
+	if (_jitc->function->self.size & 7)
+	    _jitc->function->self.size += 4;
+#endif
+	offset = _jitc->function->self.size;
+    }
+#if !_CALL_SYSV
+    if (jit_arg_reg_p(_jitc->function->self.argi)) {
+#  if __WORDSIZE == 32
+	_jitc->function->self.argi += 2;
+#  else
+	_jitc->function->self.argi++;
+#  endif
+    }
+#endif
+    if (incr)
+	_jitc->function->self.size += sizeof(jit_float64_t);
     node = jit_new_node_ww(jit_code_arg_d, offset,
 			   ++_jitc->function->self.argn);
     jit_link_prolog();
@@ -618,16 +700,21 @@ _jit_putargi_d(jit_state_t *_jit, jit_float64_t u, jit_node_t *v)
 void
 _jit_pushargr(jit_state_t *_jit, jit_int32_t u)
 {
+    jit_bool_t		incr = 1;
     assert(_jitc->function);
     jit_inc_synth_w(pushargr, u);
     jit_link_prepare();
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr(JIT_RA0 - _jitc->function->call.argi, u);
 	++_jitc->function->call.argi;
+#if _CALL_SYSV
+	incr = 0;
+#endif
     }
     else
 	jit_stxi(_jitc->function->call.size + params_offset, JIT_SP, u);
-    _jitc->function->call.size += sizeof(jit_word_t);
+    if (incr)
+	_jitc->function->call.size += sizeof(jit_word_t);
     jit_dec_synth();
 }
 
@@ -635,12 +722,16 @@ void
 _jit_pushargi(jit_state_t *_jit, jit_word_t u)
 {
     jit_int32_t		 regno;
+    jit_bool_t		 incr = 1;
     assert(_jitc->function);
     jit_inc_synth_w(pushargi, u);
     jit_link_prepare();
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi(JIT_RA0 - _jitc->function->call.argi, u);
 	++_jitc->function->call.argi;
+#if _CALL_SYSV
+	incr = 0;
+#endif
     }
     else {
 	regno = jit_get_reg(jit_class_gpr);
@@ -648,148 +739,187 @@ _jit_pushargi(jit_state_t *_jit, jit_word_t u)
 	jit_stxi(_jitc->function->call.size + params_offset, JIT_SP, regno);
 	jit_unget_reg(regno);
     }
-    _jitc->function->call.size += sizeof(jit_word_t);
+    if (incr)
+	_jitc->function->call.size += sizeof(jit_word_t);
     jit_dec_synth();
 }
 
 void
 _jit_pushargr_f(jit_state_t *_jit, jit_int32_t u)
 {
+    jit_bool_t		incr = 1;
     assert(_jitc->function);
     jit_inc_synth_w(pushargr_f, u);
     jit_link_prepare();
-    if (jit_arg_f_reg_p(_jitc->function->call.argf) &&
-	!(_jitc->function->call.call & jit_call_varargs)) {
+    if (jit_arg_f_reg_p(_jitc->function->call.argf)
+#if !_CALL_SYSV
+	&& !(_jitc->function->call.call & jit_call_varargs)
+#endif
+	) {
 	jit_movr_d(JIT_FA0 - _jitc->function->call.argf, u);
 	++_jitc->function->call.argf;
+#if !_CALL_SYSV
 	/* in case of excess arguments */
 	if (jit_arg_reg_p(_jitc->function->call.argi)) {
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	    _jitc->function->call.argi += 2;
 	    if (!jit_arg_reg_p(_jitc->function->call.argi - 1))
 		--_jitc->function->call.argi;
-#else
+#  else
 	    _jitc->function->call.argi++;
-#endif
+#  endif
 	}
-    }
-    else if (jit_arg_reg_p(_jitc->function->call.argi
-#if __WORDSIZE == 32
-			  + 1
+#elif _CALL_SYSV
+	incr = 0;
 #endif
+    }
+#if !_CALL_SYSV
+    else if (jit_arg_reg_p(_jitc->function->call.argi
+#  if __WORDSIZE == 32
+			  + 1
+#  endif
 			   )) {
 	/* use reserved 8 bytes area */
 	jit_stxi_d(alloca_offset - 8, JIT_FP, u);
 	jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		 alloca_offset - 8);
 	_jitc->function->call.argi++;
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		 alloca_offset - 4);
 	_jitc->function->call.argi++;
-#endif
+#  endif
     }
+#endif
     else
 	jit_stxi_f(_jitc->function->call.size + params_offset + F_DISP,
 		   JIT_SP, u);
-    _jitc->function->call.size += sizeof(jit_word_t);
+    if (incr)
+	_jitc->function->call.size += sizeof(jit_word_t);
     jit_dec_synth();
 }
 
 void
 _jit_pushargi_f(jit_state_t *_jit, jit_float32_t u)
 {
+    jit_bool_t		 incr = 1;
     jit_int32_t		 regno;
     assert(_jitc->function);
     jit_inc_synth_f(pushargi_f, u);
     jit_link_prepare();
-    if (jit_arg_f_reg_p(_jitc->function->call.argf) &&
-	!(_jitc->function->call.call & jit_call_varargs)) {
+    if (jit_arg_f_reg_p(_jitc->function->call.argf)
+#if !_CALL_SYSV
+	&& !(_jitc->function->call.call & jit_call_varargs)
+#endif
+	) {
 	jit_movi_d(JIT_FA0 - _jitc->function->call.argf, u);
 	++_jitc->function->call.argf;
+#if !_CALL_SYSV
 	    /* in case of excess arguments */
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	_jitc->function->call.argi += 2;
 	if (!jit_arg_reg_p(_jitc->function->call.argi - 1))
 	    --_jitc->function->call.argi;
-#else
+#  else
 	_jitc->function->call.argi++;
+#  endif
+#elif _CALL_SYSV
+	incr = 0;
 #endif
     }
     else {
 	regno = jit_get_reg(jit_class_fpr);
 	jit_movi_f(regno, u);
+#if !_CALL_SYSV
 	if (jit_arg_reg_p(_jitc->function->call.argi
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 			  + 1
-#endif
+#  endif
 			  )) {
 	    /* use reserved 8 bytes area */
 	    jit_stxi_d(alloca_offset - 8, JIT_FP, regno);
 	    jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		     alloca_offset - 8);
 	    _jitc->function->call.argi++;
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	    jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		     alloca_offset - 4);
 	    _jitc->function->call.argi++;
-#endif
+#  endif
 	}
 	else
+#endif
 	    jit_stxi_f(_jitc->function->call.size + params_offset + F_DISP,
 		       JIT_SP, regno);
 	jit_unget_reg(regno);
     }
-    _jitc->function->call.size += sizeof(jit_word_t);
+    if (incr)
+	_jitc->function->call.size += sizeof(jit_word_t);
     jit_dec_synth();
 }
 
 void
 _jit_pushargr_d(jit_state_t *_jit, jit_int32_t u)
 {
+    jit_bool_t		incr = 1;
     assert(_jitc->function);
     jit_inc_synth_w(pushargr_d, u);
     jit_link_prepare();
-    if (jit_arg_f_reg_p(_jitc->function->call.argf) &&
-	!(_jitc->function->call.call & jit_call_varargs)) {
+    if (jit_arg_f_reg_p(_jitc->function->call.argf)
+#if !_CALL_SYSV
+	&& !(_jitc->function->call.call & jit_call_varargs)
+#endif
+	) {
 	jit_movr_d(JIT_FA0 - _jitc->function->call.argf, u);
 	++_jitc->function->call.argf;
+#if !_CALL_SYSV
 	    /* in case of excess arguments */
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	_jitc->function->call.argi += 2;
 	if (!jit_arg_reg_p(_jitc->function->call.argi - 1))
 	    --_jitc->function->call.argi;
-#else
+#  else
 	_jitc->function->call.argi++;
+#  endif
+#else /* _CALL_SYSV */
+	incr = 0;
 #endif
     }
+#if !_CALL_SYSV
     else if (jit_arg_reg_p(_jitc->function->call.argi
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 			  + 1
-#endif
+#  endif
 			   )) {
 	/* use reserved 8 bytes area */
 	jit_stxi_d(alloca_offset - 8, JIT_FP, u);
 	jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		 alloca_offset - 8);
 	_jitc->function->call.argi++;
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		 alloca_offset - 4);
 	_jitc->function->call.argi++;
-#endif
+#  endif
     }
-    else {
+    else
+#endif /* !_CALL_SYSV */
+    {
+#if _CALL_SYSV
+	if (_jitc->function->call.size & 7)
+	    _jitc->function->call.size += 4;
+#endif
 	jit_stxi_d(_jitc->function->call.size + params_offset, JIT_SP, u);
-#if __WORDSIZE == 32
-	    if (jit_arg_reg_p(_jitc->function->call.argi)) {
-		jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_SP,
-			 _jitc->function->call.size + params_offset);
-		_jitc->function->call.argi++;
-	    }
+#if !_CALL_SYSV && __WORDSIZE == 32
+	if (jit_arg_reg_p(_jitc->function->call.argi)) {
+	    jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_SP,
+		     _jitc->function->call.size + params_offset);
+	    _jitc->function->call.argi++;
+	}
 #endif
     }
-    _jitc->function->call.size += sizeof(jit_float64_t);
+    if (incr)
+	_jitc->function->call.size += sizeof(jit_float64_t);
     jit_dec_synth();
 }
 
@@ -797,47 +927,62 @@ void
 _jit_pushargi_d(jit_state_t *_jit, jit_float64_t u)
 {
     jit_int32_t		 regno;
+    jit_bool_t		 incr = 1;
     assert(_jitc->function);
     jit_inc_synth_d(pushargi_d, u);
     jit_link_prepare();
-    if (jit_arg_f_reg_p(_jitc->function->call.argf) &&
-	!(_jitc->function->call.call & jit_call_varargs)) {
+    if (jit_arg_f_reg_p(_jitc->function->call.argf)
+#if !_CALL_SYSV
+	&& !(_jitc->function->call.call & jit_call_varargs)
+#endif
+	) {
 	jit_movi_d(JIT_FA0 - _jitc->function->call.argf, u);
 	++_jitc->function->call.argf;
+#if !_CALL_SYSV
 	/* in case of excess arguments */
 	if (jit_arg_reg_p(_jitc->function->call.argi)) {
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	    _jitc->function->call.argi += 2;
 	    if (!jit_arg_reg_p(_jitc->function->call.argi - 1))
 		--_jitc->function->call.argi;
-#else
+#  else
 	    _jitc->function->call.argi++;
-#endif
+#  endif
 	}
+#else /* _CALL_SYSV */
+	    incr = 0;
+#endif
     }
     else {
 	regno = jit_get_reg(jit_class_fpr);
 	jit_movi_d(regno, u);
+#if !_CALL_SYSV
 	if (jit_arg_reg_p(_jitc->function->call.argi
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 			  + 1
-#endif
+#  endif
 			  )) {
 	    /* use reserved 8 bytes area */
 	    jit_stxi_d(alloca_offset - 8, JIT_FP, regno);
 	    jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		     alloca_offset - 8);
 	    _jitc->function->call.argi++;
-#if __WORDSIZE == 32
+#  if __WORDSIZE == 32
 	    jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_FP,
 		     alloca_offset - 4);
 	    _jitc->function->call.argi++;
-#endif
+#  endif
 	}
-	else {
+	else
+#endif /* !_CALL_SYSV */
+	{
+#if _CALL_SYSV
+	    if (_jitc->function->call.size & 7)
+		_jitc->function->call.size += 4;
+#endif
 	    jit_stxi_d(_jitc->function->call.size + params_offset,
 		       JIT_SP, regno);
-#if __WORDSIZE == 32
+#if !_CALL_SYSV && __WORDSIZE == 32
 	    if (jit_arg_reg_p(_jitc->function->call.argi)) {
 		jit_ldxi(JIT_RA0 - _jitc->function->call.argi, JIT_SP,
 			 _jitc->function->call.size + params_offset);
@@ -847,7 +992,8 @@ _jit_pushargi_d(jit_state_t *_jit, jit_float64_t u)
 	}
 	jit_unget_reg(regno);
     }
-    _jitc->function->call.size += sizeof(jit_float64_t);
+    if (incr)
+	_jitc->function->call.size += sizeof(jit_float64_t);
     jit_dec_synth();
 }
 
@@ -882,6 +1028,11 @@ _jit_finishr(jit_state_t *_jit, jit_int32_t r0)
     call = jit_callr(r0);
     call->v.w = _jitc->function->call.argi;
     call->w.w = _jitc->function->call.argf;
+#if _CALL_SYSV
+    /* If passing float arguments in registers */
+    if ((_jitc->function->call.call & jit_call_varargs) && call->w.w)
+	call->flag |= jit_flag_varargs;
+#endif
     _jitc->function->call.argi = _jitc->function->call.argf = 0;
     _jitc->prepare = 0;
     jit_dec_synth();
@@ -898,6 +1049,10 @@ _jit_finishi(jit_state_t *_jit, jit_pointer_t i0)
     node = jit_calli(i0);
     node->v.w = _jitc->function->call.argi;
     node->w.w = _jitc->function->call.argf;
+#if _CALL_SYSV
+    if ((_jitc->function->call.call & jit_call_varargs) && node->w.w)
+	node->flag |= jit_flag_varargs;
+#endif
     _jitc->function->call.argi = _jitc->function->call.argf = 0;
     _jitc->prepare = 0;
     jit_dec_synth();
@@ -1000,7 +1155,7 @@ _emit_code(jit_state_t *_jit)
 	jit_word_t	 prevw;
 #endif
 	jit_word_t	 patch_offset;
-#if __powerpc__
+#if _CALL_AIXDESC
 	jit_word_t	 prolog_offset;
 #endif
     } undo;
@@ -1019,7 +1174,7 @@ _emit_code(jit_state_t *_jit)
 #if DEVEL_DISASSEMBLER
     prevw = _jit->pc.w;
 #endif
-#if __powerpc__ && !ABI_ELFv2
+#if _CALL_AIXDESC
     undo.prolog_offset = 0;
     for (node = _jitc->head; node; node = node->next)
 	if (node->code != jit_code_label &&
@@ -1506,7 +1661,7 @@ _emit_code(jit_state_t *_jit)
 		break;
 	    case jit_code_jmpi:
 		if (node->flag & jit_flag_node) {
-#if __powerpc__ && !ABI_ELFv2
+#if _CALL_AIXDESC
 		    if (_jit->pc.uc == _jit->code.ptr + sizeof(void*) * 3)
 			_jitc->jump = 1;
 #endif
@@ -1524,19 +1679,31 @@ _emit_code(jit_state_t *_jit)
 		    (void)jmpi_p(node->u.w);
 		break;
 	    case jit_code_callr:
-		callr(rn(node->u.w));
+		callr(rn(node->u.w)
+#if _CALL_SYSV
+		      , !!(node->flag & jit_flag_varargs)
+#endif
+		      );
 		break;
 	    case jit_code_calli:
 		if (node->flag & jit_flag_node) {
 		    temp = node->u.n;
 		    assert(temp->code == jit_code_label ||
 			   temp->code == jit_code_epilog);
-		    word = calli_p(temp->u.w);
+		    word = calli_p(temp->u.w
+#if _CALL_SYSV
+				   , !!(node->flag & jit_flag_varargs)
+#endif
+				   );
 		    if (!(temp->flag & jit_flag_patch))
 			patch(word, node);
 		}
 		else
-		    calli(node->u.w);
+		    calli(node->u.w
+#if _CALL_SYSV
+			  , !!(node->flag & jit_flag_varargs)
+#endif
+			  );
 		break;
 	    case jit_code_prolog:
 		_jitc->function = _jitc->functions.ptr + node->w.w;
@@ -1546,12 +1713,12 @@ _emit_code(jit_state_t *_jit)
 		undo.prevw = prevw;
 #endif
 		undo.patch_offset = _jitc->patches.offset;
-#if __powerpc__ && !ABI_ELFv2
+#if _CALL_AIXDESC
 		undo.prolog_offset = _jitc->prolog.offset;
 #endif
 	    restart_function:
 		_jitc->again = 0;
-#if __powerpc__ && !ABI_ELFv2
+#if _CALL_AIXDESC
 		if (_jitc->jump && !_jitc->function->assume_frame) {
 		    /* remember prolog to hide offset adjustment for a jump
 		     * to the start of a function, what is expected to be
@@ -1589,7 +1756,7 @@ _emit_code(jit_state_t *_jit)
 		    prevw = undo.prevw;
 #endif
 		    _jitc->patches.offset = undo.patch_offset;
-#if __powerpc__ && !ABI_ELFv2
+#if _CALL_AIXDESC
 		    _jitc->prolog.offset = undo.prolog_offset;
 #endif
 		    goto restart_function;

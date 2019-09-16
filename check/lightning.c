@@ -4233,7 +4233,7 @@ main(int argc, char *argv[])
 			  sizeof(cmdline) - opt_short,
 			  " -D__arm__=1");
 #endif
-#if defined(__ppc__) || defined(__powerpc__)
+#if defined(__powerpc__)
     opt_short += snprintf(cmdline + opt_short,
 			  sizeof(cmdline) - opt_short,
 			  " -D__ppc__=1");

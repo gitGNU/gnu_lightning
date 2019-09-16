@@ -1,3 +1,28 @@
+2019-09-16 Paulo Andrade <pcpa@gnu.org>
+
+	* Makefile.am: Do not force CFLAGS for the get_jit_size target.
+	* check/lightning.c: Drop __ppc__ check.
+	* include/lightning.h.in: Drop __ppc__ check. Add new
+	jit_flag_vararg flag, for special case in powerpc 32 bit using
+	 the SYSV abi, and need to pass an extra argument during code
+	generation.
+	* include/lightning/jit_ppc.c: Drop __ppc_ check. Remove the
+	ABI_ELFv2 macro, as it now directly checks for the _CALL_ELF
+	value when/if appropriate.
+	* include/lightning/jit_private.h: Drop __ppc_ check. Check for
+	_CALL_AIXDESC to define extra data to handle function
+	descriptors.
+	* lib/jit_ppc-cpu.c: Update to check for _CALL_SYSV; assume
+	!_CALL_SYSV == (_CALL_AIX || _CALL_LINUX). Significant code
+	rework for the SYSV abi.
+	* lib/jit_ppc-sz.c: Update for the SYSV abi.
+	* lib/jit_ppc.c: Update for the SYSV abi. Add matching va_list
+	type. Drop __ppc__ check.
+	* lib/jit_size.c: Drop __ppc_ check.
+	* lib/lightning.c: Drop __ppc__ check. Add proper check for
+	__powerpc__ and _CALL_AIXDESC to manage function descriptors.
+	* lib/size.c: Update to drop __pppc_ check and SYSV abi.
+
 2019-08-30 Paulo Andrade <pcpa@gnu.org>
 
 	* lib/jit_mips-cpu.c: Use JALR to get the same effect as JR, as

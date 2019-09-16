@@ -36,7 +36,7 @@ static jit_int16_t	_szs[jit_code_last_code] = {
 #    include "jit_mips-sz.c"
 #  elif defined(__arm__)
 #    include "jit_arm-sz.c"
-#  elif defined(__ppc__) || defined(__powerpc__)
+#  elif defined(__powerpc__)
 #    include "jit_ppc-sz.c"
 #  elif defined(__sparc__)
 #    include "jit_sparc-sz.c"

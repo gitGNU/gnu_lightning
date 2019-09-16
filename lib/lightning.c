@@ -935,7 +935,7 @@ void _jit_really_clear_state(jit_state_t *_jit)
     jit_free((jit_pointer_t *)&_jitc->data_info.ptr);
 #endif
 
-#if __powerpc64__ || __ia64__
+#if (__powerpc__ && _CALL_AIXDESC) || __ia64__
     jit_free((jit_pointer_t *)&_jitc->prolog.ptr);
 #endif
 
@@ -3450,7 +3450,7 @@ _patch_register(jit_state_t *_jit, jit_node_t *node, jit_node_t *link,
 #  include "jit_mips.c"
 #elif defined(__arm__)
 #  include "jit_arm.c"
-#elif defined(__ppc__) || defined(__powerpc__)
+#elif defined(__powerpc__)
 #  include "jit_ppc.c"
 #elif defined(__sparc__)
 #  include "jit_sparc.c"

@@ -399,8 +399,6 @@ static void _sti_d(jit_state_t*,jit_word_t,jit_int32_t);
 static void _stxr_d(jit_state_t*,jit_int32_t,jit_int32_t,jit_int32_t);
 #  define stxi_d(i0,r0,r1)		_stxi_d(_jit,i0,r0,r1)
 static void _stxi_d(jit_state_t*,jit_word_t,jit_int32_t,jit_int32_t);
-#  define vaarg_d(r0, r1)		_vaarg_d(_jit, r0, r1)
-static void _vaarg_d(jit_state_t*, jit_int32_t, jit_int32_t);
 #endif
 
 #if CODE
@@ -1180,15 +1178,5 @@ _stxi_d(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 	stxr_d(rn(reg), r0, r1);
 	jit_unget_reg(reg);
     }
-}
-
-static void
-_vaarg_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
-{
-    /* Load argument. */
-    ldr_d(r0, r1);
-
-    /* Update va_list. */
-    addi(r1, r1, sizeof(jit_float64_t));
 }
 #endif

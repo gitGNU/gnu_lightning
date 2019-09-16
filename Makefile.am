@@ -38,7 +38,7 @@ get_jit_size::	$(JIT_SIZE_PATH)
 
 $(JIT_SIZE_PATH):
 	make clean
-	make CFLAGS='-O0 -g3' check
+	make check
 	$(top_builddir)/size
 
 CLEANFILES = $(JIT_SIZE_PATH)
