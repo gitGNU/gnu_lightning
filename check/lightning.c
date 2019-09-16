@@ -4052,7 +4052,7 @@ main(int argc, char *argv[])
     int			 opt_short;
     char		 cmdline[8192];
 
-#if __WORDSIZE == 32 && defined(__CYGWIN__)
+#if defined(__CYGWIN__)
     /* Cause a compile warning about redefinition without dllimport
      * attribute, *but* cause correct linkage if liblightning.a is
      * linked to binutils (that happens to have an internal
