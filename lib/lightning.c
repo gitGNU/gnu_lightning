@@ -2157,6 +2157,10 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block)
     unsigned long	 value;
 
     jit_regset_set_mask(&regmask, _jitc->reglen);
+    for (value = 0; value < _jitc->reglen; ++value)
+	if (!(jit_class(_rvs[value].spec) & (jit_class_gpr|jit_class_fpr)))
+	    jit_regset_clrbit(&regmask, value);
+
     for (node = block->label->next; node; node = node->next) {
 	switch (node->code) {
 	    case jit_code_label:	case jit_code_prolog:
