@@ -683,7 +683,7 @@ static void _patch_at(jit_state_t*, jit_node_t*, jit_word_t, jit_word_t);
 #    if __X32
 #      define ffsl(i)			ffs(i)
 #    else
-static int ffsl(long);
+#      define ffsl(l)			__builtin_ffsl(l)
 #    endif
 #  endif
 #endif
@@ -3839,23 +3839,4 @@ _patch_at(jit_state_t *_jit, jit_node_t *node,
 	    break;
     }
 }
-
-#  if __X64 && !defined(HAVE_FFSL)
-static int
-ffsl(long i)
-{
-    int		bit;
-#    if __CYGWIN__
-    /* Bug workaround */
-    if ((int)i == (int)0x80000000)
-	bit = 32;
-    else
-#    endif
-    if ((bit = ffs((int)i)) == 0) {
-	if ((bit = ffs((int)((unsigned long)i >> 32))))
-	    bit += 32;
-    }
-    return (bit);
-}
-#  endif
 #endif

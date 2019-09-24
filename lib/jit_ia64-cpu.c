@@ -214,7 +214,7 @@ typedef enum {
 #define stxi(i0,r0,r1)			stxi_l(i0,r0,r1)
 
 #if !HAVE_FFSL
-static int ffsl(long);
+#  define ffsl(l)			__builtin_ffsl(l)
 #endif
 
 /* libgcc */
@@ -5399,17 +5399,4 @@ _patch_at(jit_state_t *_jit, jit_code_t code,
     }
     set_bundle(c.p, l, h, tm, s0, s1, s2);
 }
-
-#if !HAVE_FFSL
-static int
-ffsl(long i)
-{
-    int		bit;
-    if ((bit = ffs((int)i)) == 0) {
-	if ((bit = ffs((int)((unsigned long)i >> 32))))
-	    bit += 32;
-    }
-    return (bit);
-}
-#endif
 #endif
