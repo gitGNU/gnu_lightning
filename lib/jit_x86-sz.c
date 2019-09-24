@@ -402,7 +402,7 @@
 #endif
 
 #if __X64
-#if __CYGWIN__
+#if _WIN32
 #define JIT_INSTR_MAX 130
     0,	/* data */
     0,	/* live */
@@ -1605,6 +1605,6 @@
     0,	/* movi_d_ww */
     0,	/* movr_d_w */
     0,	/* movi_d_w */
-#endif /* __CYGWIN__ */
+#endif /* _WIN32 */
 #  endif /* __X64_32 */
 #endif /* __X64 */

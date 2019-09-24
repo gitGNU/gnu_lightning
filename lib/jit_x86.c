@@ -30,7 +30,7 @@
 #  define va_gp_increment		4
 #  define va_fp_increment		8
 #else
-#  if __CYGWIN__
+#  if _WIN32
 #    define jit_arg_reg_p(i)		((i) >= 0 && (i) < 4)
 #    define jit_arg_f_reg_p(i)		jit_arg_reg_p(i)
 #    define stack_framesize		152
@@ -62,7 +62,7 @@
 /*
  * Types
  */
-#if __X32 || __CYGWIN__
+#if __X32 || _WIN32
 typedef jit_pointer_t jit_va_list_t;
 #else
 typedef struct jit_va_list {
@@ -147,7 +147,7 @@ jit_register_t		_rvs[] = {
     { rc(fpr) | 6,			"st(6)" },
     { rc(fpr) | 7,			"st(7)" },
 #else
-#  if __CYGWIN__
+#  if _WIN32
     { rc(gpr) | rc(rg8) | 0,		"%rax" },
     { rc(gpr) | rc(rg8) | rc(rg8) | 10,	"%r10" },
     { rc(gpr) | rc(rg8) | rc(rg8) | 11,	"%r11" },
@@ -597,7 +597,7 @@ _jit_ellipsis(jit_state_t *_jit)
 	assert(!(_jitc->function->self.call & jit_call_varargs));
 	_jitc->function->self.call |= jit_call_varargs;
 
-#if __X64 && !__CYGWIN__
+#if __X64 && !_WIN32
 	/* Allocate va_list like object in the stack.
 	 * If applicable, with enough space to save all argument
 	 * registers, and use fixed offsets for them. */
@@ -638,7 +638,7 @@ _jit_arg(jit_state_t *_jit)
 #if __X64
     if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
-#  if __CYGWIN__
+#  if _WIN32
 	_jitc->function->self.size += sizeof(jit_word_t);
 #  endif
     }
@@ -662,7 +662,7 @@ _jit_arg_f(jit_state_t *_jit)
     assert(_jitc->function);
     assert(!(_jitc->function->self.call & jit_call_varargs));
 #if __X64
-#  if __CYGWIN__
+#  if _WIN32
     if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
 	_jitc->function->self.size += sizeof(jit_word_t);
@@ -691,7 +691,7 @@ _jit_arg_d(jit_state_t *_jit)
     assert(_jitc->function);
     assert(!(_jitc->function->self.call & jit_call_varargs));
 #if __X64
-#  if __CYGWIN__
+#  if _WIN32
     if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
 	_jitc->function->self.size += sizeof(jit_word_t);
@@ -953,7 +953,7 @@ _jit_pushargr(jit_state_t *_jit, jit_int32_t u)
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr(JIT_RA0 - _jitc->function->call.argi, u);
 	++_jitc->function->call.argi;
-#  if __CYGWIN__
+#  if _WIN32
 	if (_jitc->function->call.call & jit_call_varargs)
 	    jit_stxi(_jitc->function->call.size, _RSP, u);
 	_jitc->function->call.size += sizeof(jit_word_t);
@@ -978,7 +978,7 @@ _jit_pushargi(jit_state_t *_jit, jit_word_t u)
 #if __X64
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi(JIT_RA0 - _jitc->function->call.argi, u);
-#  if __CYGWIN__
+#  if _WIN32
 	if (_jitc->function->call.call & jit_call_varargs)
 	    jit_stxi(_jitc->function->call.size, _RSP,
 		     JIT_RA0 - _jitc->function->call.argi);
@@ -1005,7 +1005,7 @@ _jit_pushargr_f(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(pushargr_f, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr_f(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1040,7 +1040,7 @@ _jit_pushargi_f(jit_state_t *_jit, jit_float32_t u)
     jit_inc_synth_f(pushargi_f, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi_f(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1077,7 +1077,7 @@ _jit_pushargr_d(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(pushargr_d, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr_d(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1112,7 +1112,7 @@ _jit_pushargi_d(jit_state_t *_jit, jit_float64_t u)
     jit_inc_synth_d(pushargi_d, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi_d(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1176,7 +1176,7 @@ _jit_finishr(jit_state_t *_jit, jit_int32_t r0)
     if (_jitc->function->self.alen < _jitc->function->call.size)
 	_jitc->function->self.alen = _jitc->function->call.size;
 #if __X64
-#  if !__CYGWIN__
+#  if !_WIN32
     if (_jitc->function->call.call & jit_call_varargs) {
 	if (jit_regno(reg) == _RAX) {
 	    reg = jit_get_reg(jit_class_gpr);
