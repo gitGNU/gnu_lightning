@@ -100,11 +100,16 @@ typedef signed short		jit_int16_t;
 typedef unsigned short		jit_uint16_t;
 typedef signed int		jit_int32_t;
 typedef unsigned int		jit_uint32_t;
-#if __WORDSIZE == 32 || (_WIN32 && !__CYGWIN__)
+#if __WORDSIZE == 32
 typedef signed long long	jit_int64_t;
 typedef unsigned long long	jit_uint64_t;
 typedef jit_int32_t		jit_word_t;
 typedef jit_uint32_t		jit_uword_t;
+#elif (_WIN32 && !__CYGWIN__)
+typedef signed long long	jit_int64_t;
+typedef unsigned long long	jit_uint64_t;
+typedef jit_int64_t		jit_word_t;
+typedef jit_uint64_t		jit_uword_t;
 #else
 typedef signed long		jit_int64_t;
 typedef unsigned long		jit_uint64_t;
