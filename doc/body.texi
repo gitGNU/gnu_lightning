@@ -404,7 +404,7 @@ va_start    (not specified)
 pushargr                                   _f  _d
 pushargi                                   _f  _d
 va_push     (not specified)
-arg         _c  _uc  _s  _us  _i  _ui  _l  _f  _d
+arg                                        _f  _d
 getarg      _c  _uc  _s  _us  _i  _ui  _l  _f  _d
 va_arg                                         _d
 putargr                                    _f  _d
