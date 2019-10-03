@@ -170,8 +170,8 @@ struct instr {
 };
 
 union value {
-    long		 i;
-    unsigned long	 ui;
+    jit_word_t		 i;
+    jit_uword_t		 ui;
     float		 f;
     double		 d;
     void		*p;
@@ -266,7 +266,7 @@ static void mov_forward(void *value, label_t *label);
 static void call_forward(void *value, label_t *label);
 static void make_arg(void *value);
 static jit_pointer_t get_arg(void);
-static long get_imm(void);
+static jit_word_t get_imm(void);
 static void live(void);
 static void align(void);	static void name(void);
 static void prolog(void);
@@ -513,8 +513,8 @@ static int skipws(void);
 static int skipnl(void);
 static int skipct(void);
 static int skipcp(void);
-static long get_int(skip_t skip);
-static unsigned long get_uint(skip_t skip);
+static jit_word_t get_int(skip_t skip);
+static jit_uword_t get_uint(skip_t skip);
 static double get_float(skip_t skip);
 static float make_float(double d);
 static void *get_pointer(skip_t skip);
@@ -900,12 +900,12 @@ get_arg(void)
     return symbol->value.p;
 }
 
-static long
+static jit_word_t
 get_imm(void)
 {
     int		 ch;
     label_t	*label;
-    long	 value;
+    jit_word_t	 value;
     ch = skipws();
     switch (ch) {
 	case '+': case '-': case '0' ... '9':
@@ -928,13 +928,13 @@ get_imm(void)
 	    break;
 	case '@':
 	    dynamic();
-	    value = (long)parser.value.p;
+	    value = (jit_word_t)parser.value.p;
 	    break;
 	default:
 	    ungetch(ch);
 	    label = get_label(skip_none);
 	    if (label->kind == label_kind_data)
-		value = (long)label->value;
+		value = (jit_word_t)label->value;
 	    else
 		error("expecting immediate");
 	    break;
@@ -1333,7 +1333,7 @@ name(void)								\
     switch (ch) {							\
 	case '0' ... '9':						\
 	    ungetch(ch);						\
-	    value = (void *)(long)get_uint(skip_none);			\
+	    value = (void *)(jit_word_t)get_uint(skip_none);		\
 	    break;							\
 	case '$':							\
 	    switch (expression()) {					\
@@ -1443,7 +1443,7 @@ movi(void)
 	case '+': case '-':
 	case '0' ... '9':
 	    ungetch(ch);
-	    value = (void *)(long)get_uint(skip_none);
+	    value = (void *)(jit_word_t)get_uint(skip_none);
 	    break;
 	case '\'':
 	    character();
@@ -1926,7 +1926,7 @@ skipcp(void)
     return (ch);
 }
 
-static long
+static jit_word_t
 get_int(skip_t skip)
 {
     switch (primary(skip)) {
@@ -1934,7 +1934,7 @@ get_int(skip_t skip)
 	    break;
 	case tok_pointer:
 	    parser.type = type_l;
-	    parser.value.i = (long)parser.value.p;
+	    parser.value.i = (jit_word_t)parser.value.p;
 	    break;
 	default:
 	    error("expecting integer");
@@ -1943,7 +1943,7 @@ get_int(skip_t skip)
     return (parser.value.i);
 }
 
-static unsigned long
+static jit_uword_t
 get_uint(skip_t skip)
 {
     switch (primary(skip)) {
@@ -1951,7 +1951,7 @@ get_uint(skip_t skip)
 	    break;
 	case tok_pointer:
 	    parser.type = type_l;
-	    parser.value.ui = (unsigned long)parser.value.p;
+	    parser.value.ui = (jit_uword_t)parser.value.p;
 	    break;
 	default:
 	    error("expecting integer");
@@ -2054,7 +2054,7 @@ get_label(skip_t skip)
 static token_t
 regname(void)
 {
-    long	num;
+    jit_word_t	num;
     int		check = 1, ch = getch();
 
     switch (ch) {
@@ -2190,9 +2190,9 @@ get_data(type_t type)
 		data_offset += sizeof(int);
 		break;
 	    case type_l:
-		check_data(sizeof(signed long));
-		*(signed long *)(data + data_offset) = get_int(skip_ws);
-		data_offset += sizeof(long);
+		check_data(sizeof(jit_word_t));
+		*(jit_word_t *)(data + data_offset) = get_int(skip_ws);
+		data_offset += sizeof(jit_word_t);
 		break;
 	    case type_f:
 		check_data(sizeof(float));
@@ -2279,7 +2279,7 @@ dot(void)
 	}
 	else
 	    error("bad .align %ld (must be a power of 2, >= 2 && <= 4096)",
-		  (long)length);
+		  (jit_word_t)length);
     }
     else if (strcmp(parser.string, "size") == 0) {
 	length = get_int(skip_ws);
@@ -3092,7 +3092,7 @@ expression_add(void)
 static void
 expression_shift(void)
 {
-    long	value;
+    jit_word_t	value;
     expression_add();
 
     switch (parser.type) {
@@ -3130,7 +3130,7 @@ expression_shift(void)
 static void
 expression_bit(void)
 {
-    long	i;
+    jit_word_t	i;
 
     expression_shift();
     switch (parser.type) {
@@ -3201,7 +3201,7 @@ expression_rel(void)
 				value.i = value.d < parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p < parser.value.i;
+				value.i = (jit_word_t)value.p < parser.value.i;
 				break;
 			}
 			break;
@@ -3220,12 +3220,12 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i < (long)parser.value.p;
+				value.i = value.i < (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p < (long)parser.value.p;
+				value.i = (jit_word_t)value.p < (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3247,7 +3247,7 @@ expression_rel(void)
 				value.i = value.d <= parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p <= parser.value.i;
+				value.i = (jit_word_t)value.p <= parser.value.i;
 				break;
 			}
 			break;
@@ -3260,19 +3260,19 @@ expression_rel(void)
 				value.i = value.d <= parser.value.d;
 				break;
 			    default:
-				value.i = (long)value.p <= parser.value.d;
+				value.i = (jit_word_t)value.p <= parser.value.d;
 				break;
 			}
 			break;
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i <= (long)parser.value.p;
+				value.i = value.i <= (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p <= (long)parser.value.p;
+				value.i = (jit_word_t)value.p <= (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3294,7 +3294,7 @@ expression_rel(void)
 				value.i = value.d == parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p == parser.value.i;
+				value.i = (jit_word_t)value.p == parser.value.i;
 				break;
 			}
 			break;
@@ -3313,7 +3313,7 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i == (long)parser.value.p;
+				value.i = value.i == (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
@@ -3340,7 +3340,7 @@ expression_rel(void)
 				value.i = value.d >= parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p >= parser.value.i;
+				value.i = (jit_word_t)value.p >= parser.value.i;
 				break;
 			}
 			break;
@@ -3359,12 +3359,12 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i >= (long)parser.value.p;
+				value.i = value.i >= (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p >= (long)parser.value.p;
+				value.i = (jit_word_t)value.p >= (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3386,7 +3386,7 @@ expression_rel(void)
 				value.i = value.d > parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p > parser.value.i;
+				value.i = (jit_word_t)value.p > parser.value.i;
 				break;
 			}
 			break;
@@ -3405,12 +3405,12 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i > (long)parser.value.p;
+				value.i = value.i > (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p > (long)parser.value.p;
+				value.i = (jit_word_t)value.p > (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3432,7 +3432,7 @@ expression_rel(void)
 				value.i = value.d != parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p != parser.value.i;
+				value.i = (jit_word_t)value.p != parser.value.i;
 				break;
 			}
 			break;
@@ -3451,7 +3451,7 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i != (long)parser.value.p;
+				value.i = value.i != (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
