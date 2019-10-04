@@ -1,3 +1,10 @@
+2019-10-04 Paulo Andrade <pcpa@gnu.org>
+
+	* check/lightning.c, include/lightning/jit_private.h,
+	include/lightning/jit_x86.h, lib/jit_x86-cpu.c, lib/jit_x86-sz.c,
+	lib/jit_x86.c: Correct issues with MinGW64 that defines _WIN32
+	and needs long long for jit_word_t.
+
 2019-09-16 Paulo Andrade <pcpa@gnu.org>
 
 	* lib/lightning.c: Do not add registers that are never modified

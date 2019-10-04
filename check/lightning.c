@@ -2387,7 +2387,12 @@ done:
     if (offset == 0 && base == 8)	buffer[offset++] = '0';
     buffer[offset] = '\0';
     if (integer) {
-	parser.value.ui = strtoul(buffer, &endptr, base);
+#if _WIN32
+#  define STRTOUL	strtoull
+#else
+#  define STRTOUL	strtoul
+#endif
+	parser.value.ui = STRTOUL(buffer, &endptr, base);
 	parser.type = type_l;
 	if (neg)
 	    parser.value.i = -parser.value.i;
@@ -2484,7 +2489,7 @@ dynamic(void)
     char	*string;
     (void)identifier('@');
     if ((label = get_label_by_name(parser.string)) == NULL) {
-#if __CYGWIN__
+#if __CYGWIN__ ||_WIN32
 	/* FIXME kludge to pass varargs test case, otherwise,
 	 * will not print/scan float values */
 	if (strcmp(parser.string + 1, "sprintf") == 0)

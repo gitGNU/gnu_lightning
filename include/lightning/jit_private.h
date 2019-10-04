@@ -65,7 +65,7 @@
 #    define JIT_FRET		_ST0
 typedef jit_uint32_t		jit_regset_t;
 #  else
-#    if __CYGWIN__
+#    if __CYGWIN__ || _WIN32
 #      define JIT_RA0		_RCX
 #    else
 #      define JIT_RA0		_RDI

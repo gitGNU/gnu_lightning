@@ -67,7 +67,7 @@ typedef enum {
     _XMM0,	_XMM1,	_XMM2,	_XMM3,	_XMM4,	_XMM5,	_XMM6,	 _XMM7,
 #  define jit_sse_reg_p(reg)	((reg) >= _XMM0 && (reg) <= _XMM7)
 #else
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
 #    define jit_r(i)		(_RAX + (i))
 #    define jit_r_num()		3
 #    define jit_v(i)		(_RBX + (i))

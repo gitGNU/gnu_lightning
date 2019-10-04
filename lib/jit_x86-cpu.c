@@ -47,7 +47,7 @@
 	((im) >= 0 && (im) < 0x80000000LL)
 #    define fits_uint32_p(im)		(((im) & 0xffffffff00000000LL) == 0)
 #  endif
-#  if __X32 || _WIN32 || __X64_32
+#  if __X32 || __CYGWIN__ || __X64_32 || _WIN32
 #      define reg8_p(rn)						\
       ((rn) >= _RAX_REGNO && (rn) <= _RBX_REGNO)
 #  else
@@ -3466,7 +3466,7 @@ _prolog(jit_state_t *_jit, jit_node_t *node)
     }
     if (_jitc->function->allocar)
 	_jitc->function->self.aoff &= -16;
-#if __X64 && _WIN32
+#if __X64 && (__CYGWIN__ || _WIN32)
     _jitc->function->stack = (((/* first 32 bytes must be allocated */
 				(_jitc->function->self.alen > 32 ?
 				 _jitc->function->self.alen : 32) -
@@ -3488,7 +3488,7 @@ _prolog(jit_state_t *_jit, jit_node_t *node)
     if (jit_regset_tstbit(&_jitc->function->regset, _RBX))
 	stxi( 4, _RSP_REGNO, _RBX_REGNO);
 #else
-#  if _WIN32
+#  if __CYGWIN__ || _WIN32
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM15))
 	sse_stxi_d(136, _RSP_REGNO, _XMM15_REGNO);
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM14))
@@ -3548,7 +3548,7 @@ _prolog(jit_state_t *_jit, jit_node_t *node)
 	jit_unget_reg(reg);
     }
 
-#if __X64 && !_WIN32
+#if __X64 && !(__CYGWIN__ || _WIN32)
     if (_jitc->function->self.call & jit_call_varargs) {
 	jit_word_t	nofp_code;
 
@@ -3597,7 +3597,7 @@ _epilog(jit_state_t *_jit, jit_node_t *node)
     if (jit_regset_tstbit(&_jitc->function->regset, _RBX))
 	ldxi(_RBX_REGNO, _RSP_REGNO,  4);
 #else
-#  if _WIN32
+#  if __CYGWIN__ || _WIN32
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM15))
 	sse_ldxi_d(_XMM15_REGNO, _RSP_REGNO, 136);
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM14))
@@ -3654,7 +3654,7 @@ _epilog(jit_state_t *_jit, jit_node_t *node)
 static void
 _vastart(jit_state_t *_jit, jit_int32_t r0)
 {
-#if __X32 || _WIN32
+#if __X32 || __CYGWIN__ || _WIN32
     assert(_jitc->function->self.call & jit_call_varargs);
     addi(r0, _RBP_REGNO, _jitc->function->self.size);
 #else
@@ -3689,7 +3689,7 @@ _vastart(jit_state_t *_jit, jit_int32_t r0)
 static void
 _vaarg(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 {
-#if __X32 || _WIN32
+#if __X32 || __CYGWIN__ || _WIN32
     assert(_jitc->function->self.call & jit_call_varargs);
     ldr(r0, r1);
     addi(r1, r1, va_gp_increment);
@@ -3754,7 +3754,7 @@ _vaarg(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 static void
 _vaarg_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_bool_t x87)
 {
-#if __X32 || _WIN32
+#if __X32 || __CYGWIN__ || _WIN32
     assert(_jitc->function->self.call & jit_call_varargs);
     if (x87)
 	x87_ldr_d(r0, r1);
