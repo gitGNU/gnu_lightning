@@ -681,7 +681,7 @@ static void _vaarg_d(jit_state_t*, jit_int32_t, jit_int32_t, jit_bool_t);
 static void _patch_at(jit_state_t*, jit_node_t*, jit_word_t, jit_word_t);
 #  if !defined(HAVE_FFSL)
 #    if __X32
-#      define ffsl(i)			ffs(i)
+#      define ffsl(i)			__builtin_ffs(i)
 #    else
 #      define ffsl(l)			__builtin_ffsl(l)
 #    endif
