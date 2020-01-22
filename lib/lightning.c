@@ -62,9 +62,9 @@ static void _del_label(jit_state_t*, jit_node_t*, jit_node_t*);
 static void
 _jit_dataset(jit_state_t *_jit);
 
-#define jit_setup(block, pass)		_jit_setup(_jit, block, pass)
+#define jit_setup(block)		_jit_setup(_jit, block)
 static void
-_jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass);
+_jit_setup(jit_state_t *_jit, jit_block_t *block);
 
 #define jit_follow(block, todo)		_jit_follow(_jit, block, todo)
 static void
@@ -1606,14 +1606,12 @@ _jit_optimize(jit_state_t *_jit)
 
     /* create initial mapping of live register values
      * at the start of a basic block */
-    for (mask = 0; mask < 2; mask++) {
-	for (offset = 0; offset < _jitc->blocks.offset; offset++) {
-	    block = _jitc->blocks.ptr + offset;
-	    if (!block->label)
-		continue;
-	    if (block->label->code != jit_code_epilog)
-		jit_setup(block, mask);
-	}
+    for (offset = 0; offset < _jitc->blocks.offset; offset++) {
+	block = _jitc->blocks.ptr + offset;
+	if (!block->label)
+	    continue;
+	if (block->label->code != jit_code_epilog)
+	    jit_setup(block);
     }
 
     /* set live state of registers not referenced in a block, but
@@ -2150,8 +2148,9 @@ _jit_trampoline(jit_state_t *_jit, jit_int32_t frame, jit_bool_t prolog)
  *   Registers in regmask might be live.
  */
 static void
-_jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass)
+_jit_setup(jit_state_t *_jit, jit_block_t *block)
 {
+    jit_bool_t		 jump;
     jit_node_t		*node;
     jit_bool_t		 live;
     unsigned long	 value;
@@ -2161,6 +2160,7 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass)
 	if (!(jit_class(_rvs[value].spec) & (jit_class_gpr|jit_class_fpr)))
 	    jit_regset_clrbit(&block->regmask, value);
 
+    jump = 0;
     for (node = block->label->next; node; node = node->next) {
 	switch (node->code) {
 	    case jit_code_label:	case jit_code_prolog:
@@ -2174,6 +2174,7 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass)
 		    !(node->w.w & jit_regno_patch) &&
 		    jit_regset_tstbit(&block->regmask, node->w.w)) {
 		    live = !(value & jit_cc_a2_chg);
+		    if (!jump || live)
 		    jit_regset_clrbit(&block->regmask, node->w.w);
 		    if (live)
 			jit_regset_setbit(&block->reglive, node->w.w);
@@ -2182,7 +2183,8 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass)
 		    !(node->v.w & jit_regno_patch) &&
 		    jit_regset_tstbit(&block->regmask, node->v.w)) {
 		    live = !(value & jit_cc_a1_chg);
-		    jit_regset_clrbit(&block->regmask, node->v.w);
+		    if (!jump || live)
+			jit_regset_clrbit(&block->regmask, node->v.w);
 		    if (live)
 			jit_regset_setbit(&block->reglive, node->v.w);
 		}
@@ -2191,13 +2193,15 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass)
 		    if (value & jit_cc_a0_rlh) {
 			if (!(node->u.q.l & jit_regno_patch) &&
 			    jit_regset_tstbit(&block->regmask, node->u.q.l)) {
-			    jit_regset_clrbit(&block->regmask, node->u.q.l);
+			    if (!jump || live)
+				jit_regset_clrbit(&block->regmask, node->u.q.l);
 			    if (live)
 				jit_regset_setbit(&block->reglive, node->u.q.l);
 			}
 			if (!(node->u.q.h & jit_regno_patch) &&
 			    jit_regset_tstbit(&block->regmask, node->u.q.h)) {
-			    jit_regset_clrbit(&block->regmask, node->u.q.h);
+			    if (!jump || live)
+				jit_regset_clrbit(&block->regmask, node->u.q.h);
 			    if (live)
 				jit_regset_setbit(&block->reglive, node->u.q.h);
 			}
@@ -2205,48 +2209,15 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block, jit_int32_t pass)
 		    else {
 			if (!(node->u.w & jit_regno_patch) &&
 			    jit_regset_tstbit(&block->regmask, node->u.w)) {
-			    jit_regset_clrbit(&block->regmask, node->u.w);
+			    if (!jump || live)
+				jit_regset_clrbit(&block->regmask, node->u.w);
 			    if (live)
 				jit_regset_setbit(&block->reglive, node->u.w);
 			}
 		    }
 		}
-		if (pass && (value & jit_cc_a0_jmp) &&
-		    (node->flag & jit_flag_node)) {
-		    /*	Because basic blocks are not split on branches,
-		     * it is possible to have the condition:
-		     *	    1. next block has a live register;
-		     *	    2. current block modifies the register;
-		     *	    3. branch to next block is before the
-		     *	       register is modified.
-		     *	What happens is that the live register was
-		     * removed from regmask when assigned, but the
-		     * jump target block might have it live.
-		     *	XXX The proper correction is to split blocks
-		     * on branches, but the following should be cheap,
-		     * and this way, not need to significantly increase
-		     * the amount of memory used, due to needing to add
-		     * a block after every branch.
-		     *	XXX It should be cheap, but might increase
-		     * jit generation time significantly.
-		     */
-		    jit_block_t		*next;
-		    jit_node_t		*label;
-		    jit_regset_t	 regtemp;
-
-		    label = node->u.n;
-		    next = _jitc->blocks.ptr + label->v.w;
-		    jit_regset_and(&regtemp, &block->reglive, &next->reglive);
-		    if (jit_regset_set_p(&regtemp)) {
-			/* Add live state. */
-			jit_regset_ior(&block->reglive,
-				       &block->reglive, &regtemp);
-			/*  Remove from unknown state bitmask. */
-			jit_regset_com(&regtemp, &regtemp);
-			jit_regset_and(&block->regmask,
-				       &block->regmask, &regtemp);
-		    }
-		}
+		if ((value & jit_cc_a0_jmp) && (node->flag & jit_flag_node))
+		    jump = 1;
 		break;
 	}
     }
