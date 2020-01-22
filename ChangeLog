@@ -1,3 +1,9 @@
+2020-22-01 Paulo Andrade <pcpa@gnu.org>
+
+	* lib/lightning.c: Correct a special condition of a register
+	only assigned in a block, and incorrectly marked as dead before
+	a jump where the register is live.
+
 2019-10-04 Paulo Andrade <pcpa@gnu.org>
 
 	* check/lightning.c, include/lightning/jit_private.h,
