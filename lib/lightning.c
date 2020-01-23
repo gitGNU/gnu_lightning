@@ -83,6 +83,10 @@ _thread_jumps(jit_state_t *_jit);
 static void
 _sequential_labels(jit_state_t *_jit);
 
+#define split_branches()		_split_branches(_jit)
+static void
+_split_branches(jit_state_t *_jit);
+
 #define shortcut_jump(prev, node)	_shortcut_jump(_jit, prev, node)
 static jit_bool_t
 _shortcut_jump(jit_state_t *_jit, jit_node_t *prev, jit_node_t *node);
@@ -1603,6 +1607,7 @@ _jit_optimize(jit_state_t *_jit)
 
     thread_jumps();
     sequential_labels();
+    split_branches();
 
     /* create initial mapping of live register values
      * at the start of a basic block */
@@ -2150,7 +2155,6 @@ _jit_trampoline(jit_state_t *_jit, jit_int32_t frame, jit_bool_t prolog)
 static void
 _jit_setup(jit_state_t *_jit, jit_block_t *block)
 {
-    jit_bool_t		 jump;
     jit_node_t		*node;
     jit_bool_t		 live;
     unsigned long	 value;
@@ -2160,7 +2164,6 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block)
 	if (!(jit_class(_rvs[value].spec) & (jit_class_gpr|jit_class_fpr)))
 	    jit_regset_clrbit(&block->regmask, value);
 
-    jump = 0;
     for (node = block->label->next; node; node = node->next) {
 	switch (node->code) {
 	    case jit_code_label:	case jit_code_prolog:
@@ -2174,7 +2177,6 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block)
 		    !(node->w.w & jit_regno_patch) &&
 		    jit_regset_tstbit(&block->regmask, node->w.w)) {
 		    live = !(value & jit_cc_a2_chg);
-		    if (!jump || live)
 		    jit_regset_clrbit(&block->regmask, node->w.w);
 		    if (live)
 			jit_regset_setbit(&block->reglive, node->w.w);
@@ -2183,8 +2185,7 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block)
 		    !(node->v.w & jit_regno_patch) &&
 		    jit_regset_tstbit(&block->regmask, node->v.w)) {
 		    live = !(value & jit_cc_a1_chg);
-		    if (!jump || live)
-			jit_regset_clrbit(&block->regmask, node->v.w);
+		    jit_regset_clrbit(&block->regmask, node->v.w);
 		    if (live)
 			jit_regset_setbit(&block->reglive, node->v.w);
 		}
@@ -2193,15 +2194,13 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block)
 		    if (value & jit_cc_a0_rlh) {
 			if (!(node->u.q.l & jit_regno_patch) &&
 			    jit_regset_tstbit(&block->regmask, node->u.q.l)) {
-			    if (!jump || live)
-				jit_regset_clrbit(&block->regmask, node->u.q.l);
+			    jit_regset_clrbit(&block->regmask, node->u.q.l);
 			    if (live)
 				jit_regset_setbit(&block->reglive, node->u.q.l);
 			}
 			if (!(node->u.q.h & jit_regno_patch) &&
 			    jit_regset_tstbit(&block->regmask, node->u.q.h)) {
-			    if (!jump || live)
-				jit_regset_clrbit(&block->regmask, node->u.q.h);
+			    jit_regset_clrbit(&block->regmask, node->u.q.h);
 			    if (live)
 				jit_regset_setbit(&block->reglive, node->u.q.h);
 			}
@@ -2209,15 +2208,12 @@ _jit_setup(jit_state_t *_jit, jit_block_t *block)
 		    else {
 			if (!(node->u.w & jit_regno_patch) &&
 			    jit_regset_tstbit(&block->regmask, node->u.w)) {
-			    if (!jump || live)
-				jit_regset_clrbit(&block->regmask, node->u.w);
+			    jit_regset_clrbit(&block->regmask, node->u.w);
 			    if (live)
 				jit_regset_setbit(&block->reglive, node->u.w);
 			}
 		    }
 		}
-		if ((value & jit_cc_a0_jmp) && (node->flag & jit_flag_node))
-		    jump = 1;
 		break;
 	}
     }
@@ -2608,6 +2604,46 @@ _sequential_labels(jit_state_t *_jit)
 	    }
 	}
 	prev = node;
+    }
+}
+
+static void
+_split_branches(jit_state_t *_jit)
+{
+    jit_node_t		*node;
+    jit_node_t		*next;
+    jit_node_t		*label;
+    jit_block_t		*block;
+
+    for (node = _jitc->head; node; node = next) {
+	if ((next = node->next)) {
+	    if (next->code == jit_code_label ||
+		next->code == jit_code_prolog ||
+		next->code == jit_code_epilog)
+		continue;
+	    /* split block on conditional branches */
+	    if (node->code != jit_code_jmpi && node->code != jit_code_jmpr &&
+		(jit_classify(node->code) & jit_cc_a0_jmp)) {
+		label = new_node(jit_code_label);
+		label->next = next;
+		node->next = label;
+		if (_jitc->blocks.offset >= _jitc->blocks.length) {
+		    jit_word_t	  length;
+
+		    length = _jitc->blocks.length + 16;
+		    jit_realloc((jit_pointer_t *)&_jitc->blocks.ptr,
+				_jitc->blocks.length * sizeof(jit_block_t),
+				length * sizeof(jit_block_t));
+		    _jitc->blocks.length = length;
+		}
+		block = _jitc->blocks.ptr + _jitc->blocks.offset;
+		block->label = label;
+		label->v.w = _jitc->blocks.offset;
+		jit_regset_new(&block->reglive);
+		jit_regset_new(&block->regmask);
+		++_jitc->blocks.offset;
+	    }
+	}
     }
 }
 
