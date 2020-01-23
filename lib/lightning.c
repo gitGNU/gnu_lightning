@@ -2621,9 +2621,8 @@ _split_branches(jit_state_t *_jit)
 		next->code == jit_code_prolog ||
 		next->code == jit_code_epilog)
 		continue;
-	    /* split block on conditional branches */
-	    if (node->code != jit_code_jmpi && node->code != jit_code_jmpr &&
-		(jit_classify(node->code) & jit_cc_a0_jmp)) {
+	    /* split block on branches */
+	    if (jit_classify(node->code) & jit_cc_a0_jmp) {
 		label = new_node(jit_code_label);
 		label->next = next;
 		node->next = label;
