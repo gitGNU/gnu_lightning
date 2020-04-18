@@ -1,3 +1,15 @@
+2020-18-04 Paulo Andrade <pcpa@gnu.org>
+
+	* lib/jit_x86-cpu.c, lib/jit_x86.c: Implement %rip relative
+	calls and jumps on x86_64. Currently very conservative, assuming
+	a jit block can be larger than 2G, so, if a jump or call is in
+	the same jit generation, but target is unknown, use an indirect
+	branch (could have an option to assume a jit code block is
+	never larger than 2G). Also a deoptimization is that now does
+	not always generate ip relative jmpi; previously implicitly
+	assumed jmpi would never be larger than 2G. Overall still an
+	optimization.
+
 2020-23-01 Paulo Andrade <pcpa@gnu.org>
 
 	* lib/lightning.c: Add a proper fix to the condition of considering
