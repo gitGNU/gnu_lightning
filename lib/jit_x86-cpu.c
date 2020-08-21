@@ -3457,7 +3457,7 @@ _calli_p(jit_state_t *_jit, jit_word_t i0)
 static void
 _jmpr(jit_state_t *_jit, jit_int32_t r0)
 {
-    rex(0, WIDE, _NOREG, _NOREG, r0);
+    rex(0, 0, _NOREG, _NOREG, r0);
     ic(0xff);
     mrm(0x03, 0x04, r7(r0));
 }
