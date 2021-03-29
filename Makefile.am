@@ -17,10 +17,13 @@
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS =		\
+	gnulib-lib	\
 	check		\
 	doc		\
 	include		\
 	lib
+
+EXTRA_DIST = m4/gnulib-cache.m4
 
 pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = lightning.pc
