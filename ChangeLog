@@ -1,3 +1,8 @@
+021-04-03  Marc Nieper-Wißkirchen  <marc@nieper-wisskirchen.de>
+
+	* Makefile.am, check/Makefile.am, doc/Makefile.am, lib/Makefile.am: Include $(top_builddir)/include in include paths
+	for the autoconf-generated header file lightning.h.
+
 2021-04-03  Marc Nieper-Wißkirchen  <marc@nieper-wisskirchen.de>
 
 	* doc/.gitignore: Add version.texi to list of ignored files.

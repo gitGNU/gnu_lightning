@@ -14,7 +14,7 @@
 # License for more details.
 #
 
-AM_CFLAGS = -I$(top_srcdir)/include -D_GNU_SOURCE
+AM_CFLAGS = -I$(top_builddir)/include -I$(top_srcdir)/include -D_GNU_SOURCE
 
 check_PROGRAMS = lightning ccall self setcode nodata ctramp carg cva_list
 
@@ -315,4 +315,3 @@ CLEANFILES = $(TESTS)
 
 debug:		lightning
 	$(LIBTOOL) --mode=execute gdb lightning
-
