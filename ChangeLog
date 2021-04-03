@@ -1,6 +1,19 @@
-021-04-03  Marc Nieper-Wißkirchen  <marc@nieper-wisskirchen.de>
+2021-04-03  Marc Nieper-Wißkirchen  <marc@nieper-wisskirchen.de>
 
-	* Makefile.am, check/Makefile.am, doc/Makefile.am, lib/Makefile.am: Include $(top_builddir)/include in include paths
+	* check/Makefile.am: Add test for the live instruction.
+	* check/live.ok: New file.
+	* check/live.tst: New file.
+	* doc/body.texi: Add documentation for the live instruction and
+	for jit_get_reg/jit_get_unreg.  Fix menu entries.
+	* include/lightning.h.in (jit_get_reg, jit_unget_reg): Expose the
+	macros in the public header file.
+	* include/lightning/jit_private.h (jit_get_reg, jit_unget_reg):
+	Remove the macros from the private header file.
+
+2021-04-03  Marc Nieper-Wißkirchen  <marc@nieper-wisskirchen.de>
+
+	* Makefile.am, check/Makefile.am, doc/Makefile.am,
+	lib/Makefile.am: Include $(top_builddir)/include in include paths
 	for the autoconf-generated header file lightning.h.
 
 2021-04-03  Marc Nieper-Wißkirchen  <marc@nieper-wisskirchen.de>

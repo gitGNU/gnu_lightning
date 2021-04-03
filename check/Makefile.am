@@ -91,6 +91,7 @@ EXTRA_DIST =				\
 	call.tst	call.ok		\
 	float.tst	float.ok	\
 	jmpr.tst	jmpr.ok		\
+	live.tst	live.ok		\
 	put.tst		put.ok		\
 	qalu.inc			\
 	qalu_mul.tst	qalu_mul.ok	\
@@ -125,7 +126,7 @@ base_TESTS =				\
 	fop_abs fop_sqrt		\
 	varargs stack			\
 	clobber carry call		\
-	float jmpr put			\
+	float jmpr live put		\
 	qalu_mul qalu_div		\
 	range ranger ret tramp		\
 	va_list
