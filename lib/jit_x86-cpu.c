@@ -3475,8 +3475,8 @@ _jmpi(jit_state_t *_jit, jit_word_t i0)
 	w = i0 - (_jit->pc.w + 4);
 	ii(w);
 	word = _jit->pc.w;
-    }
 #if __X64
+    }
     else
 	word = jmpi_p(i0);
 #endif
