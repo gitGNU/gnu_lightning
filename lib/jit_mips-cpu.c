@@ -2896,10 +2896,11 @@ _bmci(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_word_t i1)
 static void
 _callr(jit_state_t *_jit, jit_int32_t r0)
 {
+    JALR(r0);
     if (r0 != _T9_REGNO)
 	movr(_T9_REGNO, r0);
-    JALR(r0);
-    NOP(1);
+    else
+	NOP(1);
 }
 
 static void
