@@ -107,6 +107,10 @@ typedef union {
 #  endif
 #  define can_sign_extend_short_p(im)	((im) >= -32678 && (im) <= 32767)
 #  define can_zero_extend_short_p(im)	((im) >= 0 && (im) <= 65535)
+#  define is_low_mask(im)		(((im) & 1) ? (__builtin_popcountl((im) + 1) == 1) : 0)
+#  define is_high_mask(im)		((im) ? (__builtin_popcountl((im) + (1 << __builtin_ctzl(im))) == 0) : 0)
+#  define masked_bits_count(im)		__builtin_popcountl(im)
+#  define unmasked_bits_count(im)	(__WORDSIZE - masked_bits_count(im))
 #  if __WORDSIZE == 32
 #    define can_sign_extend_int_p(im)	1
 #    define can_zero_extend_int_p(im)	1
@@ -1163,7 +1167,20 @@ _andi(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
     jit_int32_t		reg;
     if (can_zero_extend_short_p(i0))
 	ANDI(r0, r1, i0);
-    else {
+    else if (is_low_mask(i0)) {
+#if defined(_MIPS_ARCH_MIPS32R2) || defined(_MIPS_ARCH_MIPS64R2)
+	if (masked_bits_count(i0) <= 32)
+	    EXT(r0, r1, 0, masked_bits_count(i0));
+	else
+#endif
+	{
+		lshi(r0, r1, unmasked_bits_count(i0));
+		rshi_u(r0, r0, unmasked_bits_count(i0));
+	}
+    } else if (is_high_mask(i0)) {
+	rshi(r0, r1, unmasked_bits_count(i0));
+	lshi(r0, r0, unmasked_bits_count(i0));
+    } else {
 	reg = jit_get_reg(jit_class_gpr);
 	movi(rn(reg), i0);
 	AND(r0, r1, rn(reg));
