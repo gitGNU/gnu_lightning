@@ -494,7 +494,8 @@ static void _ori(jit_state_t*,jit_int32_t,jit_int32_t,jit_word_t);
 #  define xorr(r0,r1,r2)		XOR(r0,r1,r2)
 #  define xori(r0,r1,i0)		_xori(_jit,r0,r1,i0)
 static void _xori(jit_state_t*,jit_int32_t,jit_int32_t,jit_word_t);
-#  define movr(r0,r1)			orr(r0,r1,_ZERO_REGNO)
+#  define movr(r0,r1)			_movr(_jit,r0,r1)
+static void _movr(jit_state_t*,jit_int32_t,jit_int32_t);
 #  define movi(r0,i0)			_movi(_jit,r0,i0)
 static void _movi(jit_state_t*,jit_int32_t,jit_word_t);
 #  define movi_p(r0,i0)			_movi_p(_jit,r0,i0)
@@ -1194,6 +1195,13 @@ _xori(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 	XOR(r0, r1, rn(reg));
 	jit_unget_reg(reg);
     }
+}
+
+static void
+_movr(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
+{
+    if (r0 != r1)
+	orr(r0, r1, _ZERO_REGNO);
 }
 
 static void
