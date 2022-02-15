@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -67,7 +67,7 @@ typedef enum {
     _XMM0,	_XMM1,	_XMM2,	_XMM3,	_XMM4,	_XMM5,	_XMM6,	 _XMM7,
 #  define jit_sse_reg_p(reg)	((reg) >= _XMM0 && (reg) <= _XMM7)
 #else
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
 #    define jit_r(i)		(_RAX + (i))
 #    define jit_r_num()		3
 #    define jit_v(i)		(_RBX + (i))
@@ -117,21 +117,21 @@ typedef enum {
 #    define jit_sse_reg_p(reg)	((reg) >= _XMM4 && (reg) <= _XMM0)
 #  else
 #    define jit_r(i)		(_RAX + (i))
-#    define jit_r_num()		4
+#    define jit_r_num()		3
 #    define jit_v(i)		(_RBX + (i))
-#    define jit_v_num()		4
+#    define jit_v_num()		5
 #    define jit_f(index)	(_XMM8 + (index))
 #    define jit_f_num()		8
 #    define JIT_R0		_RAX
 #    define JIT_R1		_R10
 #    define JIT_R2		_R11
-#    define JIT_R3		_R12
-    _RAX,	_R10,	_R11,	_R12,
+    _RAX,	_R10,	_R11,
 #    define JIT_V0		_RBX
 #    define JIT_V1		_R13
 #    define JIT_V2		_R14
 #    define JIT_V3		_R15
-    _RBX,	_R13,	_R14,	_R15,
+#    define JIT_V4		_R12
+    _RBX,	_R13,	_R14,	_R15,	_R12,
     _R9,	_R8,	_RCX,	_RDX,	_RSI,	_RDI,
     _RSP,	_RBP,
 #    define JIT_F0		_XMM8

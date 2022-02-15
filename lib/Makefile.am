@@ -1,5 +1,5 @@
 #
-# Copyright 2000, 2001, 2002, 2012-2015 Free Software Foundation, Inc.
+# Copyright 2000, 2001, 2002, 2012-2019 Free Software Foundation, Inc.
 #
 # This file is part of GNU lightning.
 #
@@ -14,7 +14,8 @@
 # License for more details.
 #
 
-AM_CFLAGS = -I$(top_srcdir)/include -D_GNU_SOURCE $(LIGHTNING_CFLAGS)
+AM_CFLAGS = -I$(top_builddir)/include -I$(top_srcdir)/include	\
+	-D_GNU_SOURCE $(LIGHTNING_CFLAGS)
 liblightning_LTLIBRARIES = liblightning.la
 liblightning_la_LDFLAGS = -version-info 1:0:0
 
@@ -64,6 +65,10 @@ EXTRA_DIST =			\
 	jit_ppc-cpu.c		\
 	jit_ppc-fpu.c		\
 	jit_ppc-sz.c		\
+	jit_riscv.c		\
+	jit_riscv-cpu.c		\
+	jit_riscv-fpu.c		\
+	jit_riscv-sz.c		\
 	jit_s390.c		\
 	jit_s390-cpu.c		\
 	jit_s390-fpu.c		\

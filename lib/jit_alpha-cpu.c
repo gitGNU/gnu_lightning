@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015  Free Software Foundation, Inc.
+ * Copyright (C) 2014-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -2550,6 +2550,8 @@ _callr(jit_state_t *_jit, jit_int32_t r0)
 static void
 _calli(jit_state_t *_jit, jit_word_t i0)
 {
+    /* FIXME use a small buffer to load constants - using gp */
+#if 0
     jit_word_t		w;
     jit_word_t		d;
     w = _jit->pc.w;
@@ -2558,6 +2560,10 @@ _calli(jit_state_t *_jit, jit_word_t i0)
 	BSR(_RA_REGNO, d);
     else
 	(void)calli_p(i0);
+#else
+    movi(_PV_REGNO, i0);
+    callr(_PV_REGNO);
+#endif
 }
 
 static jit_word_t
@@ -2683,7 +2689,10 @@ _vastart(jit_state_t *_jit, jit_int32_t r0)
     stxi(offsetof(jit_va_list_t, base), r0, rn(reg));
 
     /* Initialize the offset field */
-    movi(rn(reg), _jitc->function->vagp * 8);
+    if (_jitc->function->vagp < 6)
+	movi(rn(reg), _jitc->function->vagp * 8);
+    else
+	movi(rn(reg), _jitc->function->self.size - (stack_framesize - 48));
     stxi(offsetof(jit_va_list_t, offset), r0, rn(reg));
 
     jit_unget_reg(reg);

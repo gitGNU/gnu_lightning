@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -27,6 +27,14 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
+
+#ifdef STDC_HEADERS
+#  include <stddef.h>
+#else
+#  if !defined(offsetof)
+#    define offsetof(type, field) ((char *)&((type *)0)->field - (char *)0)
+#  endif
+#endif
 
 #if defined(__GNUC__)
 #  define maybe_unused		__attribute__ ((unused))
@@ -57,7 +65,7 @@
 #    define JIT_FRET		_ST0
 typedef jit_uint32_t		jit_regset_t;
 #  else
-#    if __CYGWIN__
+#    if __CYGWIN__ || _WIN32
 #      define JIT_RA0		_RCX
 #    else
 #      define JIT_RA0		_RDI
@@ -84,7 +92,7 @@ typedef jit_uint64_t		jit_regset_t;
 #    define JIT_FRET		_R0
 #  endif
 typedef jit_uint64_t		jit_regset_t;
-#elif defined(__ppc__) || defined(__powerpc__)
+#elif defined(__powerpc__)
 #  define JIT_RA0		_R3
 #  define JIT_FA0		_F1
 #  define JIT_SP		_R1
@@ -95,7 +103,14 @@ typedef jit_uint64_t		jit_regset_t;
 #  define JIT_SP		_SP
 #  define JIT_RET		_I0
 #  define JIT_FRET		_F0
+#  if __WORDSIZE == 32
 typedef jit_uint64_t		jit_regset_t;
+#  else
+typedef struct {
+    jit_uint64_t	rl;
+    jit_uint64_t	rh;
+} jit_regset_t;
+#  endif
 #elif defined(__ia64__)
 #  define JIT_SP		_R12
 #  define JIT_RET		_R8
@@ -127,6 +142,13 @@ typedef jit_uint32_t		jit_regset_t;
 #  define JIT_SP		_SP
 #  define JIT_RET		_V0
 #  define JIT_FRET		_F0
+typedef jit_uint64_t		jit_regset_t;
+#elif defined(__riscv)
+#  define JIT_RA0		_A0
+#  define JIT_FA0		_FA0
+#  define JIT_SP		_SP
+#  define JIT_RET		_A0
+#  define JIT_FRET		_FA0
 typedef jit_uint64_t		jit_regset_t;
 #endif
 
@@ -217,6 +239,10 @@ extern jit_node_t *_jit_data(jit_state_t*, const void*,
 #define jit_class_sft		0x01000000	/* not a hardware register */
 #define jit_class_rg8		0x04000000	/* x86 8 bits */
 #define jit_class_xpr		0x80000000	/* float / vector */
+/* Used on sparc64 where %f0-%f31 can be encode for single float
+ * but %f32 to %f62 only as double precision */
+#define jit_class_sng		0x10000000	/* Single precision float */
+#define jit_class_dbl		0x20000000	/* Only double precision float */
 #define jit_regno_patch		0x00008000	/* this is a register
 						 * returned by a "user" call
 						 * to jit_get_reg() */
@@ -250,7 +276,7 @@ extern jit_node_t *_jit_data(jit_state_t*, const void*,
 #define jit_cc_a2_flt		0x00200000	/* arg2 is immediate float */
 #define jit_cc_a2_dbl		0x00400000	/* arg2 is immediate double */
 
-#if __ia64__
+#if __ia64__ || (__sparc__ && __WORDSIZE == 64)
 extern void
 jit_regset_com(jit_regset_t*, jit_regset_t*);
 
@@ -286,10 +312,17 @@ jit_regset_setbit(jit_regset_t*, jit_int32_t);
 
 extern jit_bool_t
 jit_regset_tstbit(jit_regset_t*, jit_int32_t);
-#  define jit_regset_new(set)						\
+#  if __sparc__ && __WORDSIZE == 64
+#    define jit_regset_new(set)						\
+    do { (set)->rl = (set)->rh = 0; } while (0)
+#    define jit_regset_del(set)						\
+    do { (set)->rl = (set)->rh = 0; } while (0)
+#  else
+#    define jit_regset_new(set)						\
     do { (set)->rl = (set)->rh = (set)->fl = (set)->fh = 0; } while (0)
-#  define jit_regset_del(set)						\
+#    define jit_regset_del(set)						\
     do { (set)->rl = (set)->rh = (set)->fl = (set)->fh = 0; } while (0)
+#  endif
 #else
 #  define jit_regset_com(u, v)		(*(u) = ~*(v))
 #  define jit_regset_and(u, v, w)	(*(u) = *(v) & *(w))
@@ -456,7 +489,8 @@ struct jit_compiler {
     jit_int32_t		  rout;		/* first output register */
     jit_int32_t		  breg;		/* base register for prolog/epilog */
 #endif
-#if __mips__ || __ia64__ || __alpha__
+#if __mips__ || __ia64__ || __alpha__ || \
+	(__sparc__ && __WORDSIZE == 64) || __riscv
     jit_int32_t		  carry;
 #define jit_carry	  _jitc->carry
 #endif
@@ -479,10 +513,6 @@ struct jit_compiler {
     jit_regset_t	  regsav;	/* automatic spill only once */
     jit_regset_t	  reglive;	/* known live registers at some point */
     jit_regset_t	  regmask;	/* register mask to update reglive */
-    struct {
-	jit_word_t	 *ptr;
-	jit_word_t	  length;
-    } blockmask;			/* mask of visited basic blocks */
     struct {
 	jit_uint8_t	 *end;
     } code;
@@ -553,7 +583,7 @@ struct jit_compiler {
 	jit_int32_t	  values[1024];	/* pending constants */
 	jit_word_t	  patches[2048];
     } consts;
-#elif __powerpc__ || __ia64__
+#elif (__powerpc__ && _CALL_AIXDESC) || __ia64__
     /* Keep track of prolog addresses, just for the sake of making
      * jit that starts with a jump to a "main" label work like other
      * backends. */
@@ -641,14 +671,6 @@ _jit_regarg_set(jit_state_t*, jit_node_t*, jit_int32_t);
 #define jit_regarg_clr(n,v)	_jit_regarg_clr(_jit,n,v)
 extern void
 _jit_regarg_clr(jit_state_t*, jit_node_t*, jit_int32_t);
-
-#define jit_get_reg(s)		_jit_get_reg(_jit,s)
-extern jit_int32_t
-_jit_get_reg(jit_state_t*, jit_int32_t);
-
-#define jit_unget_reg(r)	_jit_unget_reg(_jit,r)
-extern void
-_jit_unget_reg(jit_state_t*, jit_int32_t);
 
 #define jit_save(reg)		_jit_save(_jit, reg)
 extern void

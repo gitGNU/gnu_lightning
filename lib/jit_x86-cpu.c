@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -47,7 +47,7 @@
 	((im) >= 0 && (im) < 0x80000000LL)
 #    define fits_uint32_p(im)		(((im) & 0xffffffff00000000LL) == 0)
 #  endif
-#  if __X32 || __CYGWIN__ || __X64_32
+#  if __X32 || __CYGWIN__ || __X64_32 || _WIN32
 #      define reg8_p(rn)						\
       ((rn) >= _RAX_REGNO && (rn) <= _RBX_REGNO)
 #  else
@@ -661,10 +661,22 @@ static jit_word_t _bxsubi_u(jit_state_t*,jit_word_t,jit_int32_t,jit_word_t);
 static void _callr(jit_state_t*, jit_int32_t);
 #  define calli(i0)			_calli(_jit, i0)
 static jit_word_t _calli(jit_state_t*, jit_word_t);
+#  if __X64
+#    define calli_p(i0)			_calli_p(_jit, i0)
+static jit_word_t _calli_p(jit_state_t*, jit_word_t);
+#  else
+#    define calli_p(i0)			calli(i0)
+#  endif
 #  define jmpr(r0)			_jmpr(_jit, r0)
 static void _jmpr(jit_state_t*, jit_int32_t);
 #  define jmpi(i0)			_jmpi(_jit, i0)
 static jit_word_t _jmpi(jit_state_t*, jit_word_t);
+#  if __X64
+#    define jmpi_p(i0)			_jmpi_p(_jit, i0)
+static jit_word_t _jmpi_p(jit_state_t*, jit_word_t);
+#  else
+#    define jmpi_p(i0)			jmpi(i0)
+#  endif
 #  define jmpsi(i0)			_jmpsi(_jit, i0)
 static void _jmpsi(jit_state_t*, jit_uint8_t);
 #  define prolog(node)			_prolog(_jit, node)
@@ -681,9 +693,9 @@ static void _vaarg_d(jit_state_t*, jit_int32_t, jit_int32_t, jit_bool_t);
 static void _patch_at(jit_state_t*, jit_node_t*, jit_word_t, jit_word_t);
 #  if !defined(HAVE_FFSL)
 #    if __X32
-#      define ffsl(i)			ffs(i)
+#      define ffsl(i)			__builtin_ffs(i)
 #    else
-static int ffsl(long);
+#      define ffsl(l)			__builtin_ffsl(l)
 #    endif
 #  endif
 #endif
@@ -3411,27 +3423,41 @@ static jit_word_t
 _calli(jit_state_t *_jit, jit_word_t i0)
 {
     jit_word_t		word;
-#if __X64
-    jit_int32_t		reg;
-
-    reg = jit_get_reg(jit_class_gpr);
-    word = movi_p(rn(reg), i0);
-    callr(rn(reg));
-    jit_unget_reg(reg);
-#else
     jit_word_t		w;
-    ic(0xe8);
-    w = i0 - (_jit->pc.w + 4);
-    ii(w);
-    word = _jit->pc.w;
+#if __X64
+    w = i0 - (_jit->pc.w + 5);
+    if ((jit_int32_t)w == w) {
+#endif
+	ic(0xe8);
+	w = i0 - (_jit->pc.w + 4);
+	ii(w);
+	word = _jit->pc.w;
+#if __X64
+    }
+    else
+	word = calli_p(i0);
 #endif
     return (word);
 }
 
+#if __X64
+static jit_word_t
+_calli_p(jit_state_t *_jit, jit_word_t i0)
+{
+    jit_word_t		word;
+    jit_int32_t		reg;
+    reg = jit_get_reg(jit_class_gpr);
+    word = movi_p(rn(reg), i0);
+    callr(rn(reg));
+    jit_unget_reg(reg);
+    return (word);
+}
+#endif
+
 static void
 _jmpr(jit_state_t *_jit, jit_int32_t r0)
 {
-    rex(0, WIDE, _NOREG, _NOREG, r0);
+    rex(0, 0, _NOREG, _NOREG, r0);
     ic(0xff);
     mrm(0x03, 0x04, r7(r0));
 }
@@ -3439,12 +3465,37 @@ _jmpr(jit_state_t *_jit, jit_int32_t r0)
 static jit_word_t
 _jmpi(jit_state_t *_jit, jit_word_t i0)
 {
+    jit_word_t		word;
     jit_word_t		w;
-    ic(0xe9);
-    w = i0 - (_jit->pc.w + 4);
-    ii(w);
-    return (_jit->pc.w);
+#if __X64
+    w = i0 - (_jit->pc.w + 5);
+    if ((jit_int32_t)w == w) {
+#endif
+	ic(0xe9);
+	w = i0 - (_jit->pc.w + 4);
+	ii(w);
+	word = _jit->pc.w;
+#if __X64
+    }
+    else
+	word = jmpi_p(i0);
+#endif
+    return (word);
 }
+
+#if __X64
+static jit_word_t
+_jmpi_p(jit_state_t *_jit, jit_word_t i0)
+{
+    jit_word_t		word;
+    jit_int32_t		reg;
+    reg = jit_get_reg(jit_class_gpr|jit_class_nospill);
+    word = movi_p(rn(reg), i0);
+    jmpr(rn(reg));
+    jit_unget_reg(reg);
+    return (word);
+}
+#endif
 
 static void
 _jmpsi(jit_state_t *_jit, jit_uint8_t i0)
@@ -3466,7 +3517,7 @@ _prolog(jit_state_t *_jit, jit_node_t *node)
     }
     if (_jitc->function->allocar)
 	_jitc->function->self.aoff &= -16;
-#if __X64 && __CYGWIN__
+#if __X64 && (__CYGWIN__ || _WIN32)
     _jitc->function->stack = (((/* first 32 bytes must be allocated */
 				(_jitc->function->self.alen > 32 ?
 				 _jitc->function->self.alen : 32) -
@@ -3488,7 +3539,7 @@ _prolog(jit_state_t *_jit, jit_node_t *node)
     if (jit_regset_tstbit(&_jitc->function->regset, _RBX))
 	stxi( 4, _RSP_REGNO, _RBX_REGNO);
 #else
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM15))
 	sse_stxi_d(136, _RSP_REGNO, _XMM15_REGNO);
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM14))
@@ -3548,7 +3599,7 @@ _prolog(jit_state_t *_jit, jit_node_t *node)
 	jit_unget_reg(reg);
     }
 
-#if __X64 && !__CYGWIN__
+#if __X64 && !(__CYGWIN__ || _WIN32)
     if (_jitc->function->self.call & jit_call_varargs) {
 	jit_word_t	nofp_code;
 
@@ -3597,7 +3648,7 @@ _epilog(jit_state_t *_jit, jit_node_t *node)
     if (jit_regset_tstbit(&_jitc->function->regset, _RBX))
 	ldxi(_RBX_REGNO, _RSP_REGNO,  4);
 #else
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM15))
 	sse_ldxi_d(_XMM15_REGNO, _RSP_REGNO, 136);
     if (jit_regset_tstbit(&_jitc->function->regset, _XMM14))
@@ -3654,7 +3705,7 @@ _epilog(jit_state_t *_jit, jit_node_t *node)
 static void
 _vastart(jit_state_t *_jit, jit_int32_t r0)
 {
-#if __X32 || __CYGWIN__
+#if __X32 || __CYGWIN__ || _WIN32
     assert(_jitc->function->self.call & jit_call_varargs);
     addi(r0, _RBP_REGNO, _jitc->function->self.size);
 #else
@@ -3689,7 +3740,7 @@ _vastart(jit_state_t *_jit, jit_int32_t r0)
 static void
 _vaarg(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 {
-#if __X32 || __CYGWIN__
+#if __X32 || __CYGWIN__ || _WIN32
     assert(_jitc->function->self.call & jit_call_varargs);
     ldr(r0, r1);
     addi(r1, r1, va_gp_increment);
@@ -3754,7 +3805,7 @@ _vaarg(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1)
 static void
 _vaarg_d(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_bool_t x87)
 {
-#if __X32 || __CYGWIN__
+#if __X32 || __CYGWIN__ || _WIN32
     assert(_jitc->function->self.call & jit_call_varargs);
     if (x87)
 	x87_ldr_d(r0, r1);
@@ -3830,6 +3881,7 @@ _patch_at(jit_state_t *_jit, jit_node_t *node,
     switch (node->code) {
 #  if __X64
 	case jit_code_calli:
+	case jit_code_jmpi:
 #  endif
 	case jit_code_movi:
 	    patch_abs(instr, label);
@@ -3839,23 +3891,4 @@ _patch_at(jit_state_t *_jit, jit_node_t *node,
 	    break;
     }
 }
-
-#  if __X64 && !defined(HAVE_FFSL)
-static int
-ffsl(long i)
-{
-    int		bit;
-#    if __CYGWIN__
-    /* Bug workaround */
-    if ((int)i == (int)0x80000000)
-	bit = 32;
-    else
-#    endif
-    if ((bit = ffs((int)i)) == 0) {
-	if ((bit = ffs((int)((unsigned long)i >> 32))))
-	    bit += 32;
-    }
-    return (bit);
-}
-#  endif
 #endif

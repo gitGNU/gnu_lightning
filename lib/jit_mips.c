@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -21,10 +21,6 @@
 #  include <sys/cachectl.h>
 #endif
 
-/* FIXME Need to detect (from /proc on Linux?) if a Loongson or Godson,
- * because n32 and n64 mandate that float registers are 64 bit, and
- * on the later, registers are 32 bit.
- */
 #if NEW_ABI
 #  define NUM_WORD_ARGS			8
 #  define STACK_SLOT			8
@@ -34,7 +30,7 @@
 #  define STACK_SLOT			4
 #  define STACK_SHIFT			2
 #endif
-#if __BYTE_ORDER == __BIG_ENDIAN && __WORDSIZE == 32
+#if NEW_ABI && __BYTE_ORDER == __BIG_ENDIAN && __WORDSIZE == 32
 #  define WORD_ADJUST			4
 #else
 #  define WORD_ADJUST			0
@@ -268,8 +264,7 @@ _jit_retr(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(retr, u);
     if (JIT_RET != u)
 	jit_movr(JIT_RET, u);
-    else
-	jit_live(JIT_RET);
+    jit_live(JIT_RET);
     jit_ret();
     jit_dec_synth();
 }
@@ -494,6 +489,14 @@ _jit_ellipsis(jit_state_t *_jit)
     jit_dec_synth();
 }
 
+void
+_jit_va_push(jit_state_t *_jit, jit_int32_t u)
+{
+    jit_inc_synth_w(va_push, u);
+    jit_pushargr(u);
+    jit_dec_synth();
+}
+
 jit_node_t *
 _jit_arg(jit_state_t *_jit)
 {
@@ -614,7 +617,7 @@ _jit_putargr(jit_state_t *_jit, jit_int32_t u, jit_node_t *v)
     if (jit_arg_reg_p(v->u.w))
 	jit_movr(_A0 - v->u.w, u);
     else
-	jit_stxi(v->u.w, _FP, u);
+	jit_stxi(v->u.w + WORD_ADJUST, _FP, u);
     jit_dec_synth();
 }
 
@@ -629,7 +632,7 @@ _jit_putargi(jit_state_t *_jit, jit_word_t u, jit_node_t *v)
     else {
 	regno = jit_get_reg(jit_class_gpr);
 	jit_movi(regno, u);
-	jit_stxi(v->u.w, _FP, regno);
+	jit_stxi(v->u.w + WORD_ADJUST, _FP, regno);
 	jit_unget_reg(regno);
     }
     jit_dec_synth();
@@ -1784,6 +1787,7 @@ _emit_code(jit_state_t *_jit)
 		break;
 	    case jit_code_live:
 	    case jit_code_arg:			case jit_code_ellipsis:
+	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
 	    case jit_code_arg_f:		case jit_code_arg_d:
 	    case jit_code_va_end:
@@ -1832,7 +1836,8 @@ _emit_code(jit_state_t *_jit)
 	    }
 	}
 	jit_regarg_clr(node, value);
-	assert(_jitc->regarg == jit_carry == _NOREG ? 0 : (1 << jit_carry));
+	assert(_jitc->regarg == 0 ||
+	       (jit_carry != _NOREG && _jitc->regarg == (1 << jit_carry)));
 	assert(_jitc->synth == 0);
 	/* update register live state */
 	jit_reglive(node);

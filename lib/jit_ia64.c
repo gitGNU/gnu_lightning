@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -429,6 +429,14 @@ _jit_ellipsis(jit_state_t *_jit)
 	_jitc->function->vagp = _jitc->function->self.argi;
 	jit_link_prolog();
     }
+    jit_dec_synth();
+}
+
+void
+_jit_va_push(jit_state_t *_jit, jit_int32_t u)
+{
+    jit_inc_synth_w(va_push, u);
+    jit_pushargr(u);
     jit_dec_synth();
 }
 
@@ -1578,6 +1586,7 @@ _emit_code(jit_state_t *_jit)
 		break;
 	    case jit_code_live:
 	    case jit_code_arg:			case jit_code_ellipsis:
+	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
 	    case jit_code_arg_f:		case jit_code_arg_d:
 	    case jit_code_va_end:
@@ -1643,9 +1652,7 @@ _emit_code(jit_state_t *_jit)
 	sync();
 #endif
 	jit_regarg_clr(node, value);
-	if (jit_carry == _NOREG)
-	    assert(jit_regset_cmp_ui(&_jitc->regarg, 0) == 0);
-	else {
+	if (jit_regset_cmp_ui(&_jitc->regarg, 0) != 0) {
 	    assert(jit_regset_scan1(&_jitc->regarg, 0) == jit_carry);
 	    assert(jit_regset_scan1(&_jitc->regarg, jit_carry + 1) == ULONG_MAX);
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015  Free Software Foundation, Inc.
+ * Copyright (C) 2014-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -251,8 +251,7 @@ _jit_retr(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(retr, u);
     if (JIT_RET != u)
 	jit_movr(JIT_RET, u);
-    else
-	jit_live(JIT_RET);
+    jit_live(JIT_RET);
     jit_ret();
     jit_dec_synth();
 }
@@ -329,7 +328,7 @@ _jit_arg_register_p(jit_state_t *_jit, jit_node_t *u)
 void
 _jit_ellipsis(jit_state_t *_jit)
 {
-    jit_inc_synth(jit_code_ellipsis);
+    jit_inc_synth(ellipsis);
     if (_jitc->prepare) {
 	jit_link_prepare();
 	assert(!(_jitc->function->call.call & jit_call_varargs));
@@ -344,6 +343,20 @@ _jit_ellipsis(jit_state_t *_jit)
 	_jitc->function->vaoff = jit_allocai(sizeof(jit_va_list_t));
 	_jitc->function->vagp = _jitc->function->self.argi;
     }
+    jit_dec_synth();
+}
+
+void
+_jit_va_push(jit_state_t *_jit, jit_int32_t u)
+{
+    jit_int32_t		reg;
+    jit_inc_synth_w(va_push, u);
+    reg = jit_get_reg(jit_class_gpr);
+    jit_ldxi(reg, u, offsetof(jit_va_list_t, base));
+    jit_pushargr(reg);
+    jit_ldxi(reg, u, offsetof(jit_va_list_t, offset));
+    jit_pushargr(reg);
+    jit_unget_reg(reg);
     jit_dec_synth();
 }
 
@@ -1407,6 +1420,7 @@ _emit_code(jit_state_t *_jit)
 		vaarg_d(rn(node->u.w), rn(node->v.w));
 		break;
 	    case jit_code_live:			case jit_code_ellipsis:
+	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
 	    case jit_code_arg:
 	    case jit_code_arg_f:		case jit_code_arg_d:
@@ -1452,7 +1466,8 @@ _emit_code(jit_state_t *_jit)
 	    }
 	}
 	jit_regarg_clr(node, value);
-	assert(_jitc->regarg == (jit_carry == _NOREG) ? 0 : (1 << jit_carry));
+	assert(_jitc->regarg == 0 ||
+	       (jit_carry != _NOREG && _jitc->regarg == (1 << jit_carry)));
 	assert(_jitc->synth == 0);
 	/* update register live state */
 	jit_reglive(node);

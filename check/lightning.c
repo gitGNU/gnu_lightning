@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -170,8 +170,8 @@ struct instr {
 };
 
 union value {
-    long		 i;
-    unsigned long	 ui;
+    jit_word_t		 i;
+    jit_uword_t		 ui;
     float		 f;
     double		 d;
     void		*p;
@@ -266,7 +266,8 @@ static void mov_forward(void *value, label_t *label);
 static void call_forward(void *value, label_t *label);
 static void make_arg(void *value);
 static jit_pointer_t get_arg(void);
-static long get_imm(void);
+static jit_word_t get_imm(void);
+static void live(void);
 static void align(void);	static void name(void);
 static void prolog(void);
 static void frame(void);	static void tramp(void);
@@ -497,7 +498,7 @@ static void bunordr_d(void);	static void bunordi_d(void);
 static void pushargr_d(void);	static void pushargi_d(void);
 static void retr_d(void);	static void reti_d(void);
 static void retval_d(void);
-static void vastart(void);
+static void vastart(void);	static void vapush(void);
 static void vaarg(void);	static void vaarg_d(void);
 static void vaend(void);
 
@@ -512,8 +513,8 @@ static int skipws(void);
 static int skipnl(void);
 static int skipct(void);
 static int skipcp(void);
-static long get_int(skip_t skip);
-static unsigned long get_uint(skip_t skip);
+static jit_word_t get_int(skip_t skip);
+static jit_uword_t get_uint(skip_t skip);
 static double get_float(skip_t skip);
 static float make_float(double d);
 static void *get_pointer(skip_t skip);
@@ -580,6 +581,7 @@ static size_t		  data_offset, data_length;
 static instr_t		  instr_vector[] = {
 #define entry(value)	{ NULL, #value, value }
 #define entry2(name, function)	{ NULL, name, function }
+    entry(live),
     entry(align),	entry(name),
     entry(prolog),
     entry(frame),	entry(tramp),
@@ -811,6 +813,7 @@ static instr_t		  instr_vector[] = {
     entry(retr_d),	entry(reti_d),
     entry(retval_d),
     entry2("va_start", vastart),
+    entry2("va_push", vapush),
     entry2("va_arg", vaarg),
     entry2("va_arg_d", vaarg_d),
     entry2("va_end", vaend),
@@ -897,12 +900,12 @@ get_arg(void)
     return symbol->value.p;
 }
 
-static long
+static jit_word_t
 get_imm(void)
 {
     int		 ch;
     label_t	*label;
-    long	 value;
+    jit_word_t	 value;
     ch = skipws();
     switch (ch) {
 	case '+': case '-': case '0' ... '9':
@@ -925,13 +928,13 @@ get_imm(void)
 	    break;
 	case '@':
 	    dynamic();
-	    value = (long)parser.value.p;
+	    value = (jit_word_t)parser.value.p;
 	    break;
 	default:
 	    ungetch(ch);
 	    label = get_label(skip_none);
 	    if (label->kind == label_kind_data)
-		value = (long)label->value;
+		value = (jit_word_t)label->value;
 	    else
 		error("expecting immediate");
 	    break;
@@ -1330,7 +1333,7 @@ name(void)								\
     switch (ch) {							\
 	case '0' ... '9':						\
 	    ungetch(ch);						\
-	    value = (void *)(long)get_uint(skip_none);			\
+	    value = (void *)(jit_word_t)get_uint(skip_none);		\
 	    break;							\
 	case '$':							\
 	    switch (expression()) {					\
@@ -1364,6 +1367,12 @@ name(void) {
     int		 ch = skipws();
     (void)identifier(ch);
     jit_name(parser.string);
+}
+static void
+live(void) {
+    if (primary(skip_ws) != tok_register)
+	error("bad register");
+    jit_live(parser.regval);
 }
 entry_im(align)
 entry(prolog)
@@ -1434,7 +1443,7 @@ movi(void)
 	case '+': case '-':
 	case '0' ... '9':
 	    ungetch(ch);
-	    value = (void *)(long)get_uint(skip_none);
+	    value = (void *)(jit_word_t)get_uint(skip_none);
 	    break;
 	case '\'':
 	    character();
@@ -1656,6 +1665,12 @@ vastart(void)
 {
     jit_gpr_t	r0 = get_ireg();
     jit_va_start(r0);
+}
+static void
+vapush(void)
+{
+    jit_gpr_t	r0 = get_ireg();
+    jit_va_push(r0);
 }
 static void
 vaarg(void)
@@ -1911,7 +1926,7 @@ skipcp(void)
     return (ch);
 }
 
-static long
+static jit_word_t
 get_int(skip_t skip)
 {
     switch (primary(skip)) {
@@ -1919,7 +1934,7 @@ get_int(skip_t skip)
 	    break;
 	case tok_pointer:
 	    parser.type = type_l;
-	    parser.value.i = (long)parser.value.p;
+	    parser.value.i = (jit_word_t)parser.value.p;
 	    break;
 	default:
 	    error("expecting integer");
@@ -1928,7 +1943,7 @@ get_int(skip_t skip)
     return (parser.value.i);
 }
 
-static unsigned long
+static jit_uword_t
 get_uint(skip_t skip)
 {
     switch (primary(skip)) {
@@ -1936,7 +1951,7 @@ get_uint(skip_t skip)
 	    break;
 	case tok_pointer:
 	    parser.type = type_l;
-	    parser.value.ui = (unsigned long)parser.value.p;
+	    parser.value.ui = (jit_uword_t)parser.value.p;
 	    break;
 	default:
 	    error("expecting integer");
@@ -2039,7 +2054,7 @@ get_label(skip_t skip)
 static token_t
 regname(void)
 {
-    long	num;
+    jit_word_t	num;
     int		check = 1, ch = getch();
 
     switch (ch) {
@@ -2175,9 +2190,9 @@ get_data(type_t type)
 		data_offset += sizeof(int);
 		break;
 	    case type_l:
-		check_data(sizeof(signed long));
-		*(signed long *)(data + data_offset) = get_int(skip_ws);
-		data_offset += sizeof(long);
+		check_data(sizeof(jit_word_t));
+		*(jit_word_t *)(data + data_offset) = get_int(skip_ws);
+		data_offset += sizeof(jit_word_t);
 		break;
 	    case type_f:
 		check_data(sizeof(float));
@@ -2264,7 +2279,7 @@ dot(void)
 	}
 	else
 	    error("bad .align %ld (must be a power of 2, >= 2 && <= 4096)",
-		  (long)length);
+		  (jit_word_t)length);
     }
     else if (strcmp(parser.string, "size") == 0) {
 	length = get_int(skip_ws);
@@ -2372,7 +2387,12 @@ done:
     if (offset == 0 && base == 8)	buffer[offset++] = '0';
     buffer[offset] = '\0';
     if (integer) {
-	parser.value.ui = strtoul(buffer, &endptr, base);
+#if _WIN32
+#  define STRTOUL	strtoull
+#else
+#  define STRTOUL	strtoul
+#endif
+	parser.value.ui = STRTOUL(buffer, &endptr, base);
 	parser.type = type_l;
 	if (neg)
 	    parser.value.i = -parser.value.i;
@@ -2469,7 +2489,7 @@ dynamic(void)
     char	*string;
     (void)identifier('@');
     if ((label = get_label_by_name(parser.string)) == NULL) {
-#if __CYGWIN__
+#if __CYGWIN__ ||_WIN32
 	/* FIXME kludge to pass varargs test case, otherwise,
 	 * will not print/scan float values */
 	if (strcmp(parser.string + 1, "sprintf") == 0)
@@ -3077,7 +3097,7 @@ expression_add(void)
 static void
 expression_shift(void)
 {
-    long	value;
+    jit_word_t	value;
     expression_add();
 
     switch (parser.type) {
@@ -3115,7 +3135,7 @@ expression_shift(void)
 static void
 expression_bit(void)
 {
-    long	i;
+    jit_word_t	i;
 
     expression_shift();
     switch (parser.type) {
@@ -3186,7 +3206,7 @@ expression_rel(void)
 				value.i = value.d < parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p < parser.value.i;
+				value.i = (jit_word_t)value.p < parser.value.i;
 				break;
 			}
 			break;
@@ -3205,12 +3225,12 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i < (long)parser.value.p;
+				value.i = value.i < (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p < (long)parser.value.p;
+				value.i = (jit_word_t)value.p < (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3232,7 +3252,7 @@ expression_rel(void)
 				value.i = value.d <= parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p <= parser.value.i;
+				value.i = (jit_word_t)value.p <= parser.value.i;
 				break;
 			}
 			break;
@@ -3245,19 +3265,19 @@ expression_rel(void)
 				value.i = value.d <= parser.value.d;
 				break;
 			    default:
-				value.i = (long)value.p <= parser.value.d;
+				value.i = (jit_word_t)value.p <= parser.value.d;
 				break;
 			}
 			break;
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i <= (long)parser.value.p;
+				value.i = value.i <= (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p <= (long)parser.value.p;
+				value.i = (jit_word_t)value.p <= (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3279,7 +3299,7 @@ expression_rel(void)
 				value.i = value.d == parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p == parser.value.i;
+				value.i = (jit_word_t)value.p == parser.value.i;
 				break;
 			}
 			break;
@@ -3298,7 +3318,7 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i == (long)parser.value.p;
+				value.i = value.i == (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
@@ -3325,7 +3345,7 @@ expression_rel(void)
 				value.i = value.d >= parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p >= parser.value.i;
+				value.i = (jit_word_t)value.p >= parser.value.i;
 				break;
 			}
 			break;
@@ -3344,12 +3364,12 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i >= (long)parser.value.p;
+				value.i = value.i >= (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p >= (long)parser.value.p;
+				value.i = (jit_word_t)value.p >= (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3371,7 +3391,7 @@ expression_rel(void)
 				value.i = value.d > parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p > parser.value.i;
+				value.i = (jit_word_t)value.p > parser.value.i;
 				break;
 			}
 			break;
@@ -3390,12 +3410,12 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i > (long)parser.value.p;
+				value.i = value.i > (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
 			    default:
-				value.i = (long)value.p > (long)parser.value.p;
+				value.i = (jit_word_t)value.p > (jit_word_t)parser.value.p;
 				break;
 			}
 			break;
@@ -3417,7 +3437,7 @@ expression_rel(void)
 				value.i = value.d != parser.value.i;
 				break;
 			    default:
-				value.i = (long)value.p != parser.value.i;
+				value.i = (jit_word_t)value.p != parser.value.i;
 				break;
 			}
 			break;
@@ -3436,7 +3456,7 @@ expression_rel(void)
 		    case type_p:
 			switch (type) {
 			    case type_l:
-				value.i = value.i != (long)parser.value.p;
+				value.i = value.i != (jit_word_t)parser.value.p;
 				break;
 			    case type_d:
 				error("invalid operand");
@@ -3771,11 +3791,11 @@ execute(int argc, char *argv[])
     function = jit_emit();
     if (flag_verbose > 1 || flag_disasm) {
 	jit_print();
-	fprintf(stdout, "  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+	fprintf(stderr, "  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
     }
     if (flag_verbose > 0 || flag_disasm) {
 	jit_disassemble();
-	fprintf(stdout, "  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+	fprintf(stderr, "  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
     }
 
     jit_clear_state();
@@ -4037,7 +4057,7 @@ main(int argc, char *argv[])
     int			 opt_short;
     char		 cmdline[8192];
 
-#if __WORDSIZE == 32 && defined(__CYGWIN__)
+#if defined(__CYGWIN__)
     /* Cause a compile warning about redefinition without dllimport
      * attribute, *but* cause correct linkage if liblightning.a is
      * linked to binutils (that happens to have an internal
@@ -4218,7 +4238,7 @@ main(int argc, char *argv[])
 			  sizeof(cmdline) - opt_short,
 			  " -D__arm__=1");
 #endif
-#if defined(__ppc__) || defined(__powerpc__)
+#if defined(__powerpc__)
     opt_short += snprintf(cmdline + opt_short,
 			  sizeof(cmdline) - opt_short,
 			  " -D__ppc__=1");

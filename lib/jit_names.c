@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015  Free Software Foundation, Inc.
+ * Copyright (C) 2014-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -24,7 +24,7 @@ static char *code_name[] = {
     "#name",		"#note",
     "label",
     "prolog",
-    "ellipsis",
+    "ellipsis",		"va_push",
     "allocai",		"allocar",
     "arg",
     "getarg_c",		"getarg_uc",

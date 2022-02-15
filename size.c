@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -76,12 +76,18 @@ main(int argc, char *argv[])
     fprintf(fp, "#if !NEW_ABI\n");
 #    endif
 #  endif
-#elif defined(__ppc__)
-    fprintf(fp, "#if defined(__ppc__)\n");
 #elif defined(__powerpc__)
     fprintf(fp, "#if defined(__powerpc__)\n");
     fprintf(fp, "#if __BYTE_ORDER == %s\n",
 	    __BYTE_ORDER == __BIG_ENDIAN ? "__BIG_ENDIAN" : "__LITTLE_ENDIAN");
+#  if __WORDSIZE == 32
+    fprintf(fp, "#if %s\n",
+#    if !_CALL_SYSV
+	   "!"
+#    endif
+	   "_CALL_SYSV"
+	   );
+#  endif
 #endif
     fprintf(fp, "#define JIT_INSTR_MAX %d\n", max);
     for (offset = 0; offset < jit_code_last_code; offset++)
@@ -92,9 +98,13 @@ main(int argc, char *argv[])
 #  if __WORDSIZE == 32
     fprintf(fp, "#endif /* NEW_ABI */\n");
 #  endif
-#elif defined(__ppc__)
-    fprintf(fp, "#endif /* __ppc__ */\n");
 #elif defined(__powerpc__)
+    fprintf(fp, "#endif /* "
+#  if !_CALL_SYSV
+	    "!"
+#  endif
+	    "_CALL_SYSV"
+	    " */\n");
     fprintf(fp, "#endif /* __BYTE_ORDER */\n");
     fprintf(fp, "#endif /* __powerpc__ */\n");
 #endif

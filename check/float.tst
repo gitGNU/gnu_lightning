@@ -14,14 +14,14 @@ ok:
 #  define x80			0x8000000000000000
 #endif
 
-#if __mips__ || __sparc__ || __hppa__
+#if __mips__ || __sparc__ || __hppa__ || __riscv
 #  define wnan			x7f
 #elif __arm__ || __aarch64__ || __alpha__
 #  define wnan			0
 #else
 #  define wnan			x80
 #endif
-#if __mips__ || __arm__ || __ppc__ || __sparc__ || __hppa__ || __aarch64__ || __s390__
+#if __mips__ || __arm__ || __ppc__ || __sparc__ || __hppa__ || __aarch64__ || __s390__ || __riscv
 #  define wpinf			x7f
 #elif __alpha__
 /* (at least) bug compatible with gcc 4.2.3 -ieee */

@@ -8,7 +8,9 @@ ok:
 	movi %R3 I1					\
 	OP##r##T %R0 %R1 %R2 %R3			\
 	bnei OP##T##N##rlo##R0##R1##R2##R3 %R0 LO	\
-	beqi OP##T##N##rhi##R0##R1##R2##R3 %R1 HI	\
+	bnei OP##T##N##rlo##R0##R1##R2##R3 %R1 HI	\
+	bnei OP##T##N##rlo##R0##R1##R2##R3 %R2 I0	\
+	beqi OP##T##N##rhi##R0##R1##R2##R3 %R3 I1	\
 OP##T##N##rlo##R0##R1##R2##R3:				\
 	calli @abort					\
 OP##T##N##rhi##R0##R1##R2##R3:
@@ -19,7 +21,8 @@ OP##T##N##rhi##R0##R1##R2##R3:
 	movi %R3 HI					\
 	OP##i##T %R0 %R1 %R2 I1				\
 	bnei OP##T##N##ilo##R0##R1##R2##R3 %R0 LO	\
-	beqr OP##T##N##ihi##R0##R1##R2##R3 %R1 %R3	\
+	bner OP##T##N##ilo##R0##R1##R2##R3 %R1 %R3	\
+	beqi OP##T##N##ihi##R0##R1##R2##R3 %R2 I0	\
 OP##T##N##ilo##R0##R1##R2##R3:				\
 	calli @abort					\
 OP##T##N##ihi##R0##R1##R2##R3:
@@ -57,7 +60,8 @@ OP##T##N##1hi##R0##R1##R2##R3:
 	movi %R2 LO					\
 	OP##r##T %R0 %R1 %R0 %R3			\
 	bner OP##T##N##2lo##R0##R1##R2##R3 %R0 %R2	\
-	beqi OP##T##N##2hi##R0##R1##R2##R3 %R1 HI	\
+	bnei OP##T##N##2lo##R0##R1##R2##R3 %R1 HI	\
+	beqi OP##T##N##2hi##R0##R1##R2##R3 %R3 I1	\
 OP##T##N##2lo##R0##R1##R2##R3:				\
 	calli @abort					\
 OP##T##N##2hi##R0##R1##R2##R3:
@@ -69,7 +73,8 @@ OP##T##N##2hi##R0##R1##R2##R3:
 	movi %R3 LO					\
 	OP##r##T %R0 %R1 %R2 %R1			\
 	bner OP##T##N##3lo##R0##R1##R2##R3 %R0 %R3	\
-	beqi OP##T##N##3hi##R0##R1##R2##R3 %R1 HI	\
+	bnei OP##T##N##3lo##R0##R1##R2##R3 %R1 HI	\
+	beqi OP##T##N##3hi##R0##R1##R2##R3 %R2 I0	\
 OP##T##N##3lo##R0##R1##R2##R3:				\
 	calli @abort					\
 OP##T##N##3hi##R0##R1##R2##R3:
@@ -84,9 +89,29 @@ OP##T##N##3hi##R0##R1##R2##R3:
 
 #define QALU1(N, T, OP, I0, I1, LO, HI, R0, R1, R2, R3)	\
 	QALU2(N, T, OP, I0, I1, LO, HI, R0, R1, R2, R3)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R0, R1, R3, R2)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R0, R2, R1, R3)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R0, R2, R3, R1)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R0, R3, R1, R2)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R0, R3, R2, R1)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R1, R0, R2, R3)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R1, R0, R3, R2)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R1, R2, R0, R3)	\
 	QALU2(N, T, OP, I0, I1, LO, HI, R1, R2, R3, R0)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R1, R3, R0, R2)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R1, R3, R2, R0)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R2, R1, R0, R3)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R2, R1, R3, R0)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R2, R0, R1, R3)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R2, R0, R3, R1)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R2, R3, R1, R0)	\
 	QALU2(N, T, OP, I0, I1, LO, HI, R2, R3, R0, R1)	\
-	QALU2(N, T, OP, I0, I1, LO, HI, R3, R0, R1, R2)
+	QALU2(N, T, OP, I0, I1, LO, HI, R3, R1, R2, R0)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R3, R1, R0, R2)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R3, R2, R1, R0)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R3, R2, R0, R1)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R3, R0, R1, R2)	\
+	QALU2(N, T, OP, I0, I1, LO, HI, R3, R0, R2, R1)
 
 #define QALU(N, T, OP, I0, I1, LO, HI)			\
 	QALU1(N, T, OP, I0, I1, LO, HI, v0, v1, v2, r0)	\

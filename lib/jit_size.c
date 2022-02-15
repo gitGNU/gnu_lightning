@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -36,7 +36,7 @@ static jit_int16_t	_szs[jit_code_last_code] = {
 #    include "jit_mips-sz.c"
 #  elif defined(__arm__)
 #    include "jit_arm-sz.c"
-#  elif defined(__ppc__) || defined(__powerpc__)
+#  elif defined(__powerpc__)
 #    include "jit_ppc-sz.c"
 #  elif defined(__sparc__)
 #    include "jit_sparc-sz.c"
@@ -50,6 +50,8 @@ static jit_int16_t	_szs[jit_code_last_code] = {
 #    include "jit_s390-sz.c"
 #  elif defined(__alpha__)
 #    include "jit_alpha-sz.c"
+#  elif defined(__riscv)
+#    include "jit_riscv-sz.c"
 #  endif
 #endif
 };

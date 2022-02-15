@@ -1,5 +1,5 @@
 dnl
-dnl Copyright 2000, 2001, 2002, 2012-2015 Free Software Foundation, Inc.
+dnl Copyright 2000, 2001, 2002, 2012-2019 Free Software Foundation, Inc.
 dnl
 dnl This file is part of GNU lightning.
 dnl
@@ -7,26 +7,29 @@ dnl GNU lightning is free software; you can redistribute it and/or modify it
 dnl under the terms of the GNU Lesser General Public License as published
 dnl by the Free Software Foundation; either version 3, or (at your option)
 dnl any later version.
-dnl 
+dnl
 dnl GNU lightning is distributed in the hope that it will be useful, but
 dnl WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 dnl or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 dnl License for more details.
 dnl
 
-AC_PREREQ(2.57)
-AC_INIT([GNU lightning], 2.1.0, pcpa@gnu.org, lightning)
+AC_PREREQ(2.64)
+AC_INIT([GNU lightning], 2.1.3, pcpa@gnu.org, lightning)
+AC_CONFIG_AUX_DIR([build-aux])
 AC_CANONICAL_TARGET
 AC_CONFIG_SRCDIR([Makefile.am])
 AM_INIT_AUTOMAKE([dist-bzip2])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-AC_CONFIG_MACRO_DIR(m4)
+AC_CONFIG_MACRO_DIR([m4])
 
-AC_CONFIG_HEADERS(config.h)
+AC_CONFIG_HEADERS([config.h])
 
 AC_PROG_CC
-AC_PROG_INSTALL
-AC_PROG_LIBTOOL
+gl_EARLY
+AM_PROG_AR
+LT_INIT
+gl_INIT
 
 case "$target_cpu" in
     ia64)
@@ -93,6 +96,24 @@ fi
 AM_CONDITIONAL(with_disassembler, [test "x$DISASSEMBLER" != "xno"])
 if test "x$DISASSEMBLER" != "xno"; then
     LIGHTNING_CFLAGS="$LIGHTNING_CFLAGS -DDISASSEMBLER=1"
+    save_CFLAGS=$CFLAGS
+    CFLAGS="$CFLAGS -I$PWD/include -D_GNU_SOURCE"
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE(
+	#include <lightning.h>
+	#include <lightning/jit_private.h>
+	#include <dis-asm.h>
+	int main(int argc, char *argv[])
+	{
+		disassembler_ftype	 print;
+		bfd			*abfd;
+		print = disassembler(abfd);
+		return 0;
+	}
+    )], [ac_cv_test_new_disassembler=no],,)
+    CFLAGS="$save_CFLAGS"
+    if test "x$ac_cv_test_new_disassembler" != "xno"; then
+	LIGHTNING_CFLAGS="$LIGHTNING_CFLAGS -DBINUTILS_2_29=1"
+    fi
 fi
 
 AC_ARG_ENABLE(devel-disassembler,
@@ -143,6 +164,7 @@ case "$target_cpu" in
     aarch64)		cpu=aarch64	;;
     s390*)		cpu=s390	;;
     alpha*)		cpu=alpha	;;
+    riscv*)		cpu=riscv	;;
     *)					;;
 esac
 AM_CONDITIONAL(cpu_arm,     [test cpu-$cpu = cpu-arm])
@@ -155,6 +177,7 @@ AM_CONDITIONAL(cpu_hppa,    [test cpu-$cpu = cpu-hppa])
 AM_CONDITIONAL(cpu_aarch64, [test cpu-$cpu = cpu-aarch64])
 AM_CONDITIONAL(cpu_s390,    [test cpu-$cpu = cpu-s390])
 AM_CONDITIONAL(cpu_alpha,   [test cpu-$cpu = cpu-alpha])
+AM_CONDITIONAL(cpu_riscv,   [test cpu-$cpu = cpu-riscv])
 
 # Test x87 if both, x87 and sse2 available
 ac_cv_test_x86_x87=
@@ -265,10 +288,16 @@ AC_SUBST(cpu)
 
 AC_SUBST([LIGHTNING_CFLAGS])
 
+if test $ac_cv_header_stdint_h = yes; then
+    AC_SUBST(MAYBE_INCLUDE_STDINT_H, ["#include <stdint.h>"])
+fi
+
 AC_OUTPUT([Makefile
 	   lightning.pc
+           gnulib-lib/Makefile
 	   doc/Makefile
 	   include/Makefile
 	   include/lightning/Makefile
+	   include/lightning.h
 	   lib/Makefile
 	   check/Makefile])

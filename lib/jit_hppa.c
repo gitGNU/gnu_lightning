@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -326,6 +326,14 @@ _jit_ellipsis(jit_state_t *_jit)
 
 	_jitc->function->vagp = _jitc->function->self.argi;
     }
+    jit_dec_synth();
+}
+
+void
+_jit_va_push(jit_state_t *_jit, jit_int32_t u)
+{
+    jit_inc_synth_w(va_push, u);
+    jit_pushargr(u);
     jit_dec_synth();
 }
 
@@ -735,7 +743,7 @@ _jit_regarg_p(jit_state_t *_jit, jit_node_t *node, jit_int32_t regno)
     spec = jit_class(_rvs[regno].spec);
     if (spec & jit_class_arg) {
 	if (spec & jit_class_gpr) {
-	    regno = _R26 - regno;
+	    regno -= _R23;
 	    if (regno >= 0 && regno < node->v.w)
 		return (1);
 	}
@@ -1387,6 +1395,7 @@ _emit_code(jit_state_t *_jit)
 		break;
 	    case jit_code_live:
 	    case jit_code_arg:			case jit_code_ellipsis:
+	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
 	    case jit_code_arg_f:		case jit_code_arg_d:
 	    case jit_code_va_end:

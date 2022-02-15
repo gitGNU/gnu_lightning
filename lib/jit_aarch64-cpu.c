@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -1610,8 +1610,7 @@ static void
 _ldxi_s(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 1));
-    if (i0 >= 0 && i0 <= 8191)
+    if (i0 >= 0 && i0 <= 8191 && !(i0 & 1))
 	LDRSHI(r0, r1, i0 >> 1);
     else if (i0 > -256 && i0 < 0)
 	LDURSH(r0, r1, i0 & 0x1ff);
@@ -1636,8 +1635,7 @@ static void
 _ldxi_us(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 1));
-    if (i0 >= 0 && i0 <= 8191)
+    if (i0 >= 0 && i0 <= 8191 && !(i0 & 1))
 	LDRHI(r0, r1, i0 >> 1);
     else if (i0 > -256 && i0 < 0)
 	LDURH(r0, r1, i0 & 0x1ff);
@@ -1656,8 +1654,7 @@ static void
 _ldxi_i(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 3));
-    if (i0 >= 0 && i0 <= 16383)
+    if (i0 >= 0 && i0 <= 16383 && !(i0 & 3))
 	LDRSWI(r0, r1, i0 >> 2);
     else if (i0 > -256 && i0 < 0)
 	LDURSW(r0, r1, i0 & 0x1ff);
@@ -1682,8 +1679,7 @@ static void
 _ldxi_ui(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 3));
-    if (i0 >= 0 && i0 <= 16383)
+    if (i0 >= 0 && i0 <= 16383 && !(i0 & 3))
 	LDRWI(r0, r1, i0 >> 2);
     else if (i0 > -256 && i0 < 0)
 	LDURW(r0, r1, i0 & 0x1ff);
@@ -1702,8 +1698,7 @@ static void
 _ldxi_l(jit_state_t *_jit, jit_int32_t r0, jit_int32_t r1, jit_word_t i0)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 7));
-    if (i0 >= 0 && i0 <= 32767)
+    if (i0 >= 0 && i0 <= 32767 && !(i0 & 7))
 	LDRI(r0, r1, i0 >> 3);
     else if (i0 > -256 && i0 < 0)
 	LDUR(r0, r1, i0 & 0x1ff);
@@ -1775,8 +1770,7 @@ static void
 _stxi_s(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 1));
-    if (i0 >= 0 && i0 <= 8191)
+    if (i0 >= 0 && i0 <= 8191 && !(i0 & 1))
 	STRHI(r1, r0, i0 >> 1);
     else if (i0 > -256 && i0 < 0)
 	STURH(r1, r0, i0 & 0x1ff);
@@ -1792,8 +1786,7 @@ static void
 _stxi_i(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 3));
-    if (i0 >= 0 && i0 <= 16383)
+    if (i0 >= 0 && i0 <= 16383 && !(i0 & 3))
 	STRWI(r1, r0, i0 >> 2);
     else if (i0 > -256 && i0 < 0)
 	STURW(r1, r0, i0 & 0x1ff);
@@ -1809,8 +1802,7 @@ static void
 _stxi_l(jit_state_t *_jit, jit_word_t i0, jit_int32_t r0, jit_int32_t r1)
 {
     jit_int32_t		reg;
-    assert(!(i0 & 7));
-    if (i0 >= 0 && i0 <= 32767)
+    if (i0 >= 0 && i0 <= 32767 && !(i0 & 7))
 	STRI(r1, r0, i0 >> 3);
     else if (i0 > -256 && i0 < 0)
 	STUR(r1, r0, i0 & 0x1ff);
@@ -2006,7 +1998,7 @@ _bcci(jit_state_t *_jit, jit_int32_t cc,
     jit_word_t		iS =  in >> 12;
     if (      i1 >= 0 && i1 <= 0xfff)
 	CMPI   (r0, i1);
-    else if ((is << 12) == i0 && is >= 0 && is <= 0xfff)
+    else if ((is << 12) == i1 && is >= 0 && is <= 0xfff)
 	CMPI_12(r0, is);
     else if ( in >= 0 && in <= 0xfff)
 	CMNI   (r0, in);
@@ -2117,7 +2109,7 @@ _bmxi(jit_state_t *_jit, jit_int32_t cc,
 	TSTI(r0, imm);
     else {
 	reg = jit_get_reg(jit_class_gpr);
-	movi(rn(reg), i0);
+	movi(rn(reg), i1);
 	TST(r0, rn(reg));
 	jit_unget_reg(reg);
     }

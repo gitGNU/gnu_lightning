@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -2738,7 +2738,10 @@ static void
 _vastart(jit_state_t *_jit, jit_int32_t r0)
 {
     /* Initialize stack pointer to the first stack argument. */
-    addi(r0, _FP_REGNO, params_offset - _jitc->function->vagp * 4);
+    if (jit_arg_reg_p(_jitc->function->vagp))
+	addi(r0, _FP_REGNO, params_offset - _jitc->function->vagp * 4);
+    else
+	addi(r0, _FP_REGNO, _jitc->function->self.size);
 }
 
 static void

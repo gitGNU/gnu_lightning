@@ -11,6 +11,7 @@
     3,	/* label */
     34,	/* prolog */
     0,	/* ellipsis */
+    0,	/* va_push */
     0,	/* allocai */
     0,	/* allocar */
     0,	/* arg */
@@ -401,7 +402,7 @@
 #endif
 
 #if __X64
-#if __CYGWIN__
+#if __CYGWIN__ || _WIN32
 #define JIT_INSTR_MAX 130
     0,	/* data */
     0,	/* live */
@@ -413,6 +414,7 @@
     7,	/* label */
     130,	/* prolog */
     0,	/* ellipsis */
+    0,	/* va_push */
     0,	/* allocai */
     0,	/* allocar */
     0,	/* arg */
@@ -814,6 +816,7 @@
     3,	/* label */
     108,	/* prolog */
     0,	/* ellipsis */
+    0,	/* va_push */
     0,	/* allocai */
     0,	/* allocar */
     0,	/* arg */
@@ -1214,6 +1217,7 @@
     7,	/* label */
     115,	/* prolog */
     0,	/* ellipsis */
+    0,	/* va_push */
     0,	/* allocai */
     0,	/* allocar */
     0,	/* arg */
@@ -1601,6 +1605,6 @@
     0,	/* movi_d_ww */
     0,	/* movr_d_w */
     0,	/* movi_d_w */
-#endif /* __CYGWIN__ */
+#endif /* __CYGWIN__ || _WIN32 */
 #  endif /* __X64_32 */
 #endif /* __X64 */

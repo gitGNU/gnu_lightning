@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -30,7 +30,7 @@
 #  define va_gp_increment		4
 #  define va_fp_increment		8
 #else
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
 #    define jit_arg_reg_p(i)		((i) >= 0 && (i) < 4)
 #    define jit_arg_f_reg_p(i)		jit_arg_reg_p(i)
 #    define stack_framesize		152
@@ -62,7 +62,7 @@
 /*
  * Types
  */
-#if __X32 || __CYGWIN__
+#if __X32 || __CYGWIN__ || _WIN32
 typedef jit_pointer_t jit_va_list_t;
 #else
 typedef struct jit_va_list {
@@ -147,7 +147,7 @@ jit_register_t		_rvs[] = {
     { rc(fpr) | 6,			"st(6)" },
     { rc(fpr) | 7,			"st(7)" },
 #else
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     { rc(gpr) | rc(rg8) | 0,		"%rax" },
     { rc(gpr) | rc(rg8) | rc(rg8) | 10,	"%r10" },
     { rc(gpr) | rc(rg8) | rc(rg8) | 11,	"%r11" },
@@ -185,11 +185,11 @@ jit_register_t		_rvs[] = {
     { rc(arg) | rc(gpr) | rc(rg8) | 0,	"%rax" },
     { rc(gpr) | rc(rg8) | 10,		"%r10" },
     { rc(gpr) | rc(rg8) | 11,		"%r11" },
-    { rc(gpr) | rc(rg8) | 12,		"%r12" },
     { rc(sav) | rc(rg8) | rc(gpr) | 3,	"%rbx" },
     { rc(sav) | rc(rg8) | rc(gpr) | 13,	"%r13" },
     { rc(sav) | rc(rg8) | rc(gpr) | 14,	"%r14" },
     { rc(sav) | rc(rg8) | rc(gpr) | 15,	"%r15" },
+    { rc(sav) | rc(gpr) | rc(rg8) | 12,	"%r12" },
     { rc(arg) | rc(rg8) | rc(gpr) | 9,	"%r9" },
     { rc(arg) | rc(rg8) | rc(gpr) | 8,	"%r8" },
     { rc(arg) | rc(rg8) | rc(gpr) | 1,	"%rcx" },
@@ -507,8 +507,7 @@ _jit_retr(jit_state_t *_jit, jit_int32_t u)
     if (JIT_RET != u)
 	jit_movr(JIT_RET, u);
     /* explicitly tell it is live */
-    else
-	jit_live(JIT_RET);
+    jit_live(JIT_RET);
     jit_ret();
     jit_dec_synth();
 }
@@ -598,7 +597,7 @@ _jit_ellipsis(jit_state_t *_jit)
 	assert(!(_jitc->function->self.call & jit_call_varargs));
 	_jitc->function->self.call |= jit_call_varargs;
 
-#if __X64 && !__CYGWIN__
+#if __X64 && !(__CYGWIN__ || _WIN32)
 	/* Allocate va_list like object in the stack.
 	 * If applicable, with enough space to save all argument
 	 * registers, and use fixed offsets for them. */
@@ -621,6 +620,14 @@ _jit_ellipsis(jit_state_t *_jit)
     jit_dec_synth();
 }
 
+void
+_jit_va_push(jit_state_t *_jit, jit_int32_t u)
+{
+    jit_inc_synth_w(va_push, u);
+    jit_pushargr(u);
+    jit_dec_synth();
+}
+
 jit_node_t *
 _jit_arg(jit_state_t *_jit)
 {
@@ -631,7 +638,7 @@ _jit_arg(jit_state_t *_jit)
 #if __X64
     if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
 	_jitc->function->self.size += sizeof(jit_word_t);
 #  endif
     }
@@ -655,7 +662,7 @@ _jit_arg_f(jit_state_t *_jit)
     assert(_jitc->function);
     assert(!(_jitc->function->self.call & jit_call_varargs));
 #if __X64
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
 	_jitc->function->self.size += sizeof(jit_word_t);
@@ -684,7 +691,7 @@ _jit_arg_d(jit_state_t *_jit)
     assert(_jitc->function);
     assert(!(_jitc->function->self.call & jit_call_varargs));
 #if __X64
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_arg_reg_p(_jitc->function->self.argi)) {
 	offset = _jitc->function->self.argi++;
 	_jitc->function->self.size += sizeof(jit_word_t);
@@ -946,7 +953,7 @@ _jit_pushargr(jit_state_t *_jit, jit_int32_t u)
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr(JIT_RA0 - _jitc->function->call.argi, u);
 	++_jitc->function->call.argi;
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
 	if (_jitc->function->call.call & jit_call_varargs)
 	    jit_stxi(_jitc->function->call.size, _RSP, u);
 	_jitc->function->call.size += sizeof(jit_word_t);
@@ -971,7 +978,7 @@ _jit_pushargi(jit_state_t *_jit, jit_word_t u)
 #if __X64
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi(JIT_RA0 - _jitc->function->call.argi, u);
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
 	if (_jitc->function->call.call & jit_call_varargs)
 	    jit_stxi(_jitc->function->call.size, _RSP,
 		     JIT_RA0 - _jitc->function->call.argi);
@@ -998,7 +1005,7 @@ _jit_pushargr_f(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(pushargr_f, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr_f(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1033,7 +1040,7 @@ _jit_pushargi_f(jit_state_t *_jit, jit_float32_t u)
     jit_inc_synth_f(pushargi_f, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi_f(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1070,7 +1077,7 @@ _jit_pushargr_d(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(pushargr_d, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movr_d(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1105,7 +1112,7 @@ _jit_pushargi_d(jit_state_t *_jit, jit_float64_t u)
     jit_inc_synth_d(pushargi_d, u);
     jit_link_prepare();
 #if __X64
-#  if __CYGWIN__
+#  if __CYGWIN__ || _WIN32
     if (jit_arg_reg_p(_jitc->function->call.argi)) {
 	jit_movi_d(_XMM0 - _jitc->function->call.argi, u);
 	if (_jitc->function->call.call & jit_call_varargs) {
@@ -1169,7 +1176,7 @@ _jit_finishr(jit_state_t *_jit, jit_int32_t r0)
     if (_jitc->function->self.alen < _jitc->function->call.size)
 	_jitc->function->self.alen = _jitc->function->call.size;
 #if __X64
-#  if !__CYGWIN__
+#  if !(__CYGWIN__ || _WIN32)
     if (_jitc->function->call.call & jit_call_varargs) {
 	if (jit_regno(reg) == _RAX) {
 	    reg = jit_get_reg(jit_class_gpr);
@@ -2005,7 +2012,7 @@ _emit_code(jit_state_t *_jit)
 		    if (temp->flag & jit_flag_patch)
 			jmpi(temp->u.w);
 		    else {
-			word = jmpi(_jit->pc.w);
+			word = jmpi_p(_jit->pc.w);
 			patch(word, node);
 		    }
 		}
@@ -2020,9 +2027,12 @@ _emit_code(jit_state_t *_jit)
 		    temp = node->u.n;
 		    assert(temp->code == jit_code_label ||
 			   temp->code == jit_code_epilog);
-		    word = calli(temp->u.w);
-		    if (!(temp->flag & jit_flag_patch))
+		    if (temp->flag & jit_flag_patch)
+			calli(temp->u.w);
+		    else {
+			word = calli_p(_jit->pc.w);
 			patch(word, node);
+		    }
 		}
 		else
 		    calli(node->u.w);
@@ -2076,6 +2086,7 @@ _emit_code(jit_state_t *_jit)
 		vaarg_d(rn(node->u.w), rn(node->v.w), jit_x87_reg_p(node->u.w));
 		break;
 	    case jit_code_live:			case jit_code_ellipsis:
+	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
 	    case jit_code_arg:
 	    case jit_code_arg_f:		case jit_code_arg_d:

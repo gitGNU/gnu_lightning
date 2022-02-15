@@ -142,7 +142,7 @@ typedef unsigned short		_us;
 typedef signed int		_i;
 #if __WORDSIZE == 64
 typedef unsigned int		_ui;
-typedef signed long		_l;
+typedef jit_word_t		_l;
 #endif
 typedef float			_f;
 typedef double			_d;

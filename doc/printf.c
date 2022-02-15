@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
   jit_prolog();
   in = jit_arg();
   jit_getarg(JIT_R1, in);
+  jit_prepare();
   jit_pushargi((jit_word_t)"generated %d bytes\n");
   jit_ellipsis();
   jit_pushargr(JIT_R1);

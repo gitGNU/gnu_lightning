@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -50,7 +50,7 @@ static asymbol			 *disasm_synthetic;
 static long			  disasm_num_symbols;
 static long			  disasm_num_synthetic;
 static jit_state_t		 *disasm_jit;
-#define disasm_stream		  stdout
+static FILE			 *disasm_stream;
 #endif
 
 /*
@@ -73,8 +73,8 @@ jit_init_debug(const char *progname)
     }
     bfd_check_format(disasm_bfd, bfd_object);
     bfd_check_format(disasm_bfd, bfd_archive);
-    disasm_print = disassembler(disasm_bfd);
-    assert(disasm_print);
+    if (!disasm_stream)
+	disasm_stream = stderr;
     INIT_DISASSEMBLE_INFO(disasm_info, disasm_stream, fprintf);
 #  if defined(__i386__) || defined(__x86_64__)
     disasm_info.arch = bfd_arch_i386;
@@ -122,7 +122,27 @@ jit_init_debug(const char *progname)
     disasm_info.arch = bfd_arch_alpha;
     disasm_info.mach = bfd_mach_alpha_ev6;
 #  endif
+#  if defined(__hppa__)
+    disasm_info.arch = bfd_arch_hppa;
+    disasm_info.mach = bfd_mach_hppa10;
+#  endif
+#  if defined(__riscv)
+    disasm_info.arch = bfd_arch_riscv;
+#  if __WORDSIZE == 32
+    disasm_info.mach = bfd_mach_riscv32;
+#  else
+    disasm_info.mach = bfd_mach_riscv64;
+#  endif
+#  endif
     disasm_info.print_address_func = disasm_print_address;
+
+# if BINUTILS_2_29
+    disasm_print = disassembler(disasm_info.arch, __BYTE_ORDER == __BIG_ENDIAN,
+				disasm_info.mach, disasm_bfd);
+#  else
+    disasm_print = disassembler(disasm_bfd);
+#  endif
+    assert(disasm_print);
 
     if (bfd_get_file_flags(disasm_bfd) & HAS_SYMS) {
 	asymbol		**in;
@@ -207,6 +227,8 @@ jit_finish_debug(void)
 	jit_free((jit_pointer_t *)&disasm_synthetic);
     if (disasm_symbols)
 	jit_free((jit_pointer_t *)&disasm_symbols);
+    if (disasm_bfd)
+	bfd_close (disasm_bfd);
 #endif
 }
 

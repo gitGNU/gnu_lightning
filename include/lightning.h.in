@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2012-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -20,15 +20,9 @@
 #ifndef _lightning_h
 #define _lightning_h
 
-#if HAVE_CONFIG_H
-# include "config.h"
-#endif
-
 #include <unistd.h>
 #include <stdlib.h>
-#if HAVE_STDINT_H
-#  include <stdint.h>
-#endif
+@MAYBE_INCLUDE_STDINT_H@
 #include <string.h>
 
 #if defined(__hpux) && defined(__hppa__)
@@ -36,14 +30,6 @@
 #endif
 #if defined(__alpha__) && defined(__osf__)
 #  include <machine/endian.h>
-#endif
-
-#ifdef STDC_HEADERS
-#  include <stddef.h>
-#else
-#  if !defined(offsetof)
-#    define offsetof(type, field) ((char *)&((type *)0)->field - (char *)0)
-#  endif
 #endif
 
 #ifndef __WORDSIZE
@@ -119,6 +105,11 @@ typedef signed long long	jit_int64_t;
 typedef unsigned long long	jit_uint64_t;
 typedef jit_int32_t		jit_word_t;
 typedef jit_uint32_t		jit_uword_t;
+#elif (_WIN32 && !__CYGWIN__)
+typedef signed long long	jit_int64_t;
+typedef unsigned long long	jit_uint64_t;
+typedef jit_int64_t		jit_word_t;
+typedef jit_uint64_t		jit_uword_t;
 #else
 typedef signed long		jit_int64_t;
 typedef unsigned long		jit_uint64_t;
@@ -138,7 +129,7 @@ typedef jit_int32_t		jit_fpr_t;
 #  include <lightning/jit_mips.h>
 #elif defined(__arm__)
 #  include <lightning/jit_arm.h>
-#elif defined(__ppc__) || defined(__powerpc__)
+#elif defined(__powerpc__)
 #  include <lightning/jit_ppc.h>
 #elif defined(__sparc__)
 #  include <lightning/jit_sparc.h>
@@ -152,6 +143,8 @@ typedef jit_int32_t		jit_fpr_t;
 #  include <lightning/jit_s390.h>
 #elif defined(__alpha__)
 #  include <lightning/jit_alpha.h>
+#elif defined(__riscv)
+#  include <lightning/jit_riscv.h>
 #endif
 
 #define jit_flag_node		0x0001	/* patch node not absolute */
@@ -160,6 +153,7 @@ typedef jit_int32_t		jit_fpr_t;
 #define jit_flag_use		0x0008	/* do not remove marker label */
 #define jit_flag_synth		0x0010	/* synthesized instruction */
 #define jit_flag_head		0x1000	/* label reached by normal flow */
+#define jit_flag_varargs	0x2000	/* call{r,i} to varargs function */
 
 #define JIT_R(index)		jit_r(index)
 #define JIT_V(index)		jit_v(index)
@@ -202,6 +196,8 @@ typedef enum {
 
 #define jit_ellipsis()		_jit_ellipsis(_jit)
     jit_code_ellipsis,
+#define jit_va_push(u)		_jit_va_push(_jit,u)
+    jit_code_va_push,
 #define jit_allocai(u)		_jit_allocai(_jit,u)
 #define jit_allocar(u, v)	_jit_allocar(_jit,u,v)
     jit_code_allocai,		jit_code_allocar,
@@ -950,6 +946,7 @@ extern void _jit_putargi(jit_state_t*, jit_word_t, jit_node_t*);
 
 extern void _jit_prepare(jit_state_t*);
 extern void _jit_ellipsis(jit_state_t*);
+extern void _jit_va_push(jit_state_t*, jit_gpr_t);
 extern void _jit_pushargr(jit_state_t*, jit_gpr_t);
 extern void _jit_pushargi(jit_state_t*, jit_word_t);
 extern void _jit_finishr(jit_state_t*, jit_gpr_t);
@@ -1013,6 +1010,12 @@ extern void _jit_pushargi_d(jit_state_t*, jit_float64_t);
 extern void _jit_retr_d(jit_state_t*, jit_fpr_t);
 extern void _jit_reti_d(jit_state_t*, jit_float64_t);
 extern void _jit_retval_d(jit_state_t*, jit_fpr_t);
+
+#define jit_get_reg(s)		_jit_get_reg(_jit,s)
+extern jit_int32_t _jit_get_reg(jit_state_t*, jit_int32_t);
+
+#define jit_unget_reg(r)	_jit_unget_reg(_jit,r)
+extern void _jit_unget_reg(jit_state_t*, jit_int32_t);
 
 #define jit_new_node(c)		_jit_new_node(_jit,c)
 extern jit_node_t *_jit_new_node(jit_state_t*, jit_code_t);

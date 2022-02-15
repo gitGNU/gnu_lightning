@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015  Free Software Foundation, Inc.
+ * Copyright (C) 2013-2019  Free Software Foundation, Inc.
  *
  * This file is part of GNU lightning.
  *
@@ -263,8 +263,7 @@ _jit_retr(jit_state_t *_jit, jit_int32_t u)
     jit_inc_synth_w(retr, u);
     if (JIT_RET != u)
 	jit_movr(JIT_RET, u);
-    else
-	jit_live(JIT_RET);
+    jit_live(JIT_RET);
     jit_ret();
     jit_dec_synth();
 }
@@ -369,6 +368,14 @@ _jit_ellipsis(jit_state_t *_jit)
 	else
 	    _jitc->function->vafp = 0;
     }
+    jit_dec_synth();
+}
+
+void
+_jit_va_push(jit_state_t *_jit, jit_int32_t u)
+{
+    jit_inc_synth_w(va_push, u);
+    jit_pushargr(u);
     jit_dec_synth();
 }
 
@@ -1453,6 +1460,7 @@ _emit_code(jit_state_t *_jit)
 		vaarg_d(rn(node->u.w), rn(node->v.w));
 		break;
 	    case jit_code_live:			case jit_code_ellipsis:
+	    case jit_code_va_push:
 	    case jit_code_allocai:		case jit_code_allocar:
 	    case jit_code_arg:
 	    case jit_code_arg_f:		case jit_code_arg_d:
